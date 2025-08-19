@@ -50,6 +50,7 @@ export default function IngredientManagerScreen() {
     } else {
       setSearchResults([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, allIngredients]);
 
   const loadCustomIngredients = async () => {
@@ -269,13 +270,7 @@ export default function IngredientManagerScreen() {
     </ThemedView>
   );
 
-  const handleIngredientSelect = (ingredient: IngredientItem) => {
-    Alert.alert(
-      'Ingredient Selected',
-      `You selected: ${ingredient.name}\nCategory: ${ingredient.category}`,
-      [{ text: 'OK' }]
-    );
-  };
+  // Removed unused handleIngredientSelect function
 
   return (
     <ScrollView style={styles.container}>
@@ -285,7 +280,7 @@ export default function IngredientManagerScreen() {
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>Ingredient Database</ThemedText>
         <ThemedText style={styles.subtitle}>
-          Smart search with fuzzy matching - try typing "car" to find carrot!
+          Smart search with fuzzy matching - try typing &quot;car&quot; to find carrot!
         </ThemedText>
       </ThemedView>
 
@@ -507,16 +502,16 @@ export default function IngredientManagerScreen() {
           </ThemedText>
           <ThemedView style={styles.infoCard}>
             <ThemedText style={styles.infoText}>
-              • Type partial words: "car" finds "carrot"
+              • Type partial words: &quot;car&quot; finds &quot;carrot&quot;
             </ThemedText>
             <ThemedText style={styles.infoText}>
-              • Fuzzy matching: "pot" finds "potato" 
+              • Fuzzy matching: &quot;pot&quot; finds &quot;potato&quot; 
             </ThemedText>
             <ThemedText style={styles.infoText}>
-              • Aliases: "spud" also finds "potato"
+              • Aliases: &quot;spud&quot; also finds &quot;potato&quot;
             </ThemedText>
             <ThemedText style={styles.infoText}>
-              • Add custom ingredients that don't exist
+              • Add custom ingredients that don&apos;t exist
             </ThemedText>
             <ThemedText style={styles.infoText}>
               • Categories help organize your shopping

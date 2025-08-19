@@ -9,9 +9,16 @@ Display name in app: "Oswald Dining" (see `app.json`).
 ## Quick start
 
 Prereqs
+
 - Node 18+ and npm 9+
 - Android Studio (emulator) and/or Xcode (simulator) optional
 - A device with Expo Go or a development client
+
+macOS notes
+
+- Recommended: install Node with nvm and use the version in `.nvmrc`.
+- Optional: `brew install watchman` for better file watching.
+- Xcode for iOS simulator: install from App Store and open once.
 
 Install and run
 
@@ -21,6 +28,7 @@ npm run start
 ```
 
 When the dev server opens, choose:
+
 - a for Android emulator
 - i for iOS simulator (macOS)
 - w to open web
@@ -53,12 +61,16 @@ npm run reset-project
 ```
 
 Tips
+
 - Clear caches: `npx expo start -c`
 - Fix dependency versions to match SDK: `npx expo install --fix`
+- Type-check: `npx tsc --noEmit`
+- Lint: `npm run lint`
 
 ## EAS Build (CI-ready builds)
 
 Profiles are defined in `eas.json`:
+
 - `development`: internal dev build with a development client
 - `preview`: internal distribution
 - `production`: store-ready build (auto-increments version)
@@ -91,6 +103,7 @@ First-time EAS setup will prompt you to sign in and configure credentials.
 ## App configuration
 
 From `app.json`:
+
 - Name: `Oswald Dining`
 - Slug: `oswald-dining`
 - Scheme (deep links): `oswalddining`
@@ -102,6 +115,7 @@ From `app.json`:
 - New Architecture: enabled
 
 Notable dependencies
+
 - `expo-camera`, `expo-image-picker`, `expo-notifications`, `expo-mlkit-ocr`
 - `@react-navigation/*` for navigation, `expo-router` for file-based routes
 
@@ -113,6 +127,7 @@ Notable dependencies
 - `utils/` – helpers (e.g., units)
 
 Environment
+
 - `.env*.local` is git-ignored; place local secrets there
 
 ## Troubleshooting

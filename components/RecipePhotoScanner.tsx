@@ -1,27 +1,26 @@
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
-// Removed static import of expo-mlkit-ocr to prevent crash on web
-// import ExpoMlkitOcr from 'expo-mlkit-ocr';
-
-// Shared result type for extracted recipes
-type ExtractedRecipe = {
-  title?: string;
-  ingredients: Array<{ name: string; amount?: string }>;
-  instructions?: string;
-};
-
-import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
+// Removed static import of expo-mlkit-ocr to prevent crash on web
+// import ExpoMlkitOcr from 'expo-mlkit-ocr';
+
+// Shared result type for extracted recipes
+type ExtractedRecipe = {
+  title?: string;
+  ingredients: { name: string; amount?: string }[];
+  instructions?: string;
+};
+
 interface RecipePhotoScannerProps {
   onRecipeExtracted: (extractedData: {
     title?: string;
-    ingredients: Array<{ name: string; amount?: string }>;
+    ingredients: { name: string; amount?: string }[];
     instructions?: string;
   }) => void;
   visible: boolean;
@@ -47,7 +46,7 @@ export default function RecipePhotoScanner({ onRecipeExtracted, visible, onClose
   const [flash, setFlash] = useState<'off' | 'on'>('off');
   const [isProcessing, setIsProcessing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
-  const router = useRouter();
+  // router removed as unused
 
   const takePicture = async () => {
     if (cameraRef.current) {
@@ -180,7 +179,7 @@ export default function RecipePhotoScanner({ onRecipeExtracted, visible, onClose
     });
 
     // Try to parse ingredients from cleanedLeft
-    const ingredients: Array<{ name: string; amount?: string }> = [];
+    const ingredients: { name: string; amount?: string }[] = [];
     for (const line of cleanedLeft) {
       const ing = parseIngredientLine(line, [
         'cup', 'cups', 'tbsp', 'tsp', 'tablespoon', 'tablespoons', 'teaspoon', 'teaspoons',
@@ -268,7 +267,7 @@ export default function RecipePhotoScanner({ onRecipeExtracted, visible, onClose
     const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     
     let title = '';
-    const ingredients: Array<{ name: string; amount?: string }> = [];
+    const ingredients: { name: string; amount?: string }[] = [];
     let instructions = '';
     
     let currentSection = 'title';

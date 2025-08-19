@@ -234,7 +234,7 @@ export default function ShoppingListScreen() {
     
     const today = new Date().toISOString().split('T')[0];
     const futureMeals = mealPlan.filter(meal => meal.date >= today);
-    const allDates = mealPlan.map(meal => new Date(meal.date)).sort((a, b) => a.getTime() - b.getTime());
+    // allDates removed as unused
     
     if (futureMeals.length === 0) {
       return { dateRange: 'No upcoming meals', futureMealCount: 0, totalMealCount: mealPlan.length };
@@ -403,6 +403,7 @@ export default function ShoppingListScreen() {
 
   useEffect(() => {
     generateShoppingList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipes, mealPlan, checkedItems, customItems, currentHistoryIndex, fridgeItems]);
 
   useEffect(() => {
@@ -410,6 +411,7 @@ export default function ShoppingListScreen() {
     if (shoppingList.length > 0 && mealPlan.length > 0 && currentHistoryIndex === -1) {
       saveToHistory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shoppingList, mealPlan]);
 
   const checkedCount = shoppingList.filter(item => checkedItems[item.name.toLowerCase().trim()]).length;

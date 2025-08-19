@@ -213,7 +213,7 @@ export default function AddRecipeScreen() {
 
   const handleScannedRecipe = (extractedData: {
     title?: string;
-    ingredients: Array<{ name: string; amount?: string }>;
+    ingredients: { name: string; amount?: string }[];
     instructions?: string;
   }) => {
     if (extractedData.title) {
@@ -304,7 +304,7 @@ export default function AddRecipeScreen() {
               ) : (
                 <ThemedView style={styles.placeholderContainer}>
                   <ThemedText style={styles.placeholderText}>No photo added yet</ThemedText>
-                  <ThemedText style={styles.placeholderSubtext}>Tap "Add Photo" to upload an image</ThemedText>
+                  <ThemedText style={styles.placeholderSubtext}>Tap &quot;Add Photo&quot; to upload an image</ThemedText>
                 </ThemedView>
               )}
             </ThemedView>

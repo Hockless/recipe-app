@@ -159,6 +159,7 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
       setSearchResults([]);
       setShowResults(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText, allIngredients]);
 
   const loadCustomIngredients = async () => {
@@ -288,7 +289,7 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
               onPress={addCustomIngredient}
             >
               <ThemedText style={styles.addCustomText}>
-                Add "{searchText}" as custom ingredient
+                Add &quot;{searchText}&quot; as custom ingredient
               </ThemedText>
             </TouchableOpacity>
           )}

@@ -15,7 +15,7 @@ export default function HomeScreen() {
       }>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={styles.mainTitle}>
-          Lid and Jim's Recipe Book
+          Lid and Jim&apos;s Recipe Book
         </ThemedText>
         <ThemedText style={styles.subtitle}>
           Delicious recipes, made with love ❤️

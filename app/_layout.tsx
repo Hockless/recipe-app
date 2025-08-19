@@ -5,9 +5,6 @@ import { StatusBar } from 'expo-status-bar';
 
 
 export default function RootLayout() {
-  // Force light mode - comment out the line below to re-enable auto theme detection
-  // const colorScheme = useColorScheme();
-  const colorScheme = 'light'; // Always use light mode
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
