@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { INGREDIENT_DATABASE } from '@/components/IngredientSearch';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { UNIT_OPTIONS, buildAmount, type UnitGroup, type UnitOption } from '@/utils/units';
@@ -73,6 +74,78 @@ export default function ShoppingListScreen() {
   const [customCustomUnit, setCustomCustomUnit] = useState('');
   // New: fridge items state
   const [fridgeItems, setFridgeItems] = useState<FridgeItem[]>([]);
+  // Seeded ingredient aliases (from seeding)
+  const [seededAliases, setSeededAliases] = useState<{ name: string; aliases: string[] }[]>([]);
+
+  // Helpers: canonicalization
+  const stripParentheticals = (s: string) => s.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  const normalizeSeparators = (s: string) => s.replace(/[\-_/]+/g, ' ');
+  const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const removeDescriptors = (s: string) => {
+    const DESCRIPTORS = [
+      'finely chopped','roughly chopped','chopped','grated','sliced','diced','halved','minced','crushed',
+      'fresh','jarred','defrosted','optional','for dressing','for garnish'
+    ];
+    let out = ' ' + s + ' ';
+    for (const d of DESCRIPTORS) {
+      const re = new RegExp(`\\b${escapeRegExp(d)}\\b`, 'gi');
+      out = out.replace(re, ' ');
+    }
+    return out.replace(/\s+/g, ' ').trim();
+  };
+  const baseNormalize = (s: string) => removeDescriptors(normalizeSeparators(stripParentheticals(s.toLowerCase().trim())));
+
+  const buildAliasMap = () => {
+    const map = new Map<string, string>();
+    const add = (canon: string, alias: string) => {
+      const k = baseNormalize(alias);
+      if (k) map.set(k, canon);
+    };
+    // Built-ins
+    for (const it of INGREDIENT_DATABASE) {
+      add(it.name, it.name);
+      for (const a of it.aliases) add(it.name, a);
+    }
+    // Seeded
+    for (const it of seededAliases) {
+      add(it.name, it.name);
+      for (const a of it.aliases) add(it.name, a);
+    }
+    // Common extra synonyms
+    const EXTRAS: Record<string,string> = {
+      cilantro: 'Coriander',
+      coriander: 'Coriander',
+      scallion: 'Spring onion',
+      scallions: 'Spring onion',
+      'spring onions': 'Spring onion',
+      courgette: 'Courgette',
+      courgettes: 'Courgette',
+      zucchini: 'Courgette',
+      'bell pepper': 'Bell Pepper',
+      'bell peppers': 'Bell Pepper',
+      peppers: 'Bell Pepper',
+      pepper: 'Black Pepper',
+      'cherry tomatoes': 'Tomato',
+      tomatoes: 'Tomato',
+      tomato: 'Tomato',
+      feta: 'Feta cheese',
+      'feta cheese': 'Feta cheese',
+      sriracha: 'Sriracha',
+      lemongrass: 'Lemongrass',
+    };
+    for (const [a, c] of Object.entries(EXTRAS)) add(c, a);
+    return map;
+  };
+
+  const aliasMap = buildAliasMap();
+  const canonicalizeName = (name: string) => {
+    const k = baseNormalize(name);
+    const mapped = aliasMap.get(k);
+    if (mapped) return mapped;
+    // Fallback: title case of stripped name
+    const pretty = k.replace(/\b\w/g, m => m.toUpperCase());
+    return pretty || name.trim();
+  };
 
   const loadData = async () => {
     try {
@@ -111,6 +184,15 @@ export default function ShoppingListScreen() {
       if (storedFridge) {
         setFridgeItems(JSON.parse(storedFridge));
       }
+
+      // Load seeded ingredient aliases (used for canonicalization)
+      const storedSeeded = await AsyncStorage.getItem('seededIngredients');
+      if (storedSeeded) {
+        try {
+          const parsed = JSON.parse(storedSeeded) as { name: string; aliases: string[] }[];
+          setSeededAliases(parsed);
+        } catch {}
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -132,7 +214,7 @@ export default function ShoppingListScreen() {
 
     // New: build a normalized set of ingredients user already has
     const fridgeSet = new Set(
-      fridgeItems.map(i => i.name?.toLowerCase().trim()).filter(Boolean) as string[]
+      fridgeItems.map(i => baseNormalize(i.name || '')).filter(Boolean) as string[]
     );
 
     // Add items from meal plan (include today and future meals)
@@ -145,24 +227,24 @@ export default function ShoppingListScreen() {
           recipe.ingredients.forEach(ingredient => {
             if (!ingredient.name?.trim()) return;
             
-            const normalizedName = ingredient.name.toLowerCase().trim();
+            const canonicalName = canonicalizeName(ingredient.name);
 
             // New: Skip ingredients that are already in the user's fridge
-            if (fridgeSet.has(normalizedName)) return;
+            if (fridgeSet.has(baseNormalize(ingredient.name))) return;
             
-            if (ingredientMap[normalizedName]) {
-              if (ingredient.amount && !ingredientMap[normalizedName].amounts.includes(ingredient.amount)) {
-                ingredientMap[normalizedName].amounts.push(ingredient.amount);
+            if (ingredientMap[canonicalName]) {
+              if (ingredient.amount && !ingredientMap[canonicalName].amounts.includes(ingredient.amount)) {
+                ingredientMap[canonicalName].amounts.push(ingredient.amount);
               }
-              if (!ingredientMap[normalizedName].recipes.includes(recipe.title)) {
-                ingredientMap[normalizedName].recipes.push(recipe.title);
+              if (!ingredientMap[canonicalName].recipes.includes(recipe.title)) {
+                ingredientMap[canonicalName].recipes.push(recipe.title);
               }
             } else {
-              ingredientMap[normalizedName] = {
-                name: ingredient.name,
+              ingredientMap[canonicalName] = {
+                name: canonicalName,
                 amounts: ingredient.amount ? [ingredient.amount] : [],
                 recipes: [recipe.title],
-                checked: checkedItems[normalizedName] || false,
+                checked: checkedItems[canonicalName.toLowerCase()] || false,
                 isCustom: false
               };
             }
@@ -180,7 +262,7 @@ export default function ShoppingListScreen() {
       };
     });
 
-    const sortedList = Object.values(ingredientMap).sort((a, b) => {
+  const sortedList = Object.values(ingredientMap).sort((a, b) => {
       // Sort custom items first, then alphabetically
       if (a.isCustom && !b.isCustom) return -1;
       if (!a.isCustom && b.isCustom) return 1;
@@ -263,7 +345,7 @@ export default function ShoppingListScreen() {
       if (recipes.length === 0 || futureMeals.length === 0 || fridgeItems.length === 0) return 0;
 
       const fridgeSet = new Set(
-        fridgeItems.map(i => i.name?.toLowerCase().trim()).filter(Boolean) as string[]
+        fridgeItems.map(i => baseNormalize(i.name || '')).filter(Boolean) as string[]
       );
 
       const wouldInclude = new Set<string>();
@@ -271,7 +353,7 @@ export default function ShoppingListScreen() {
         const recipe = recipes.find(r => r.id === meal.recipeId);
         if (!recipe) return;
         recipe.ingredients.forEach(ing => {
-          const n = ing.name?.toLowerCase().trim();
+          const n = baseNormalize(ing.name || '');
           if (!n) return;
           if (fridgeSet.has(n)) wouldInclude.add(n);
         });

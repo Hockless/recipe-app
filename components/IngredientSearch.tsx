@@ -137,11 +137,13 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
   const [searchResults, setSearchResults] = useState<IngredientItem[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [customIngredients, setCustomIngredients] = useState<IngredientItem[]>([]);
+  const [seededIngredients, setSeededIngredients] = useState<IngredientItem[]>([]);
   const [allIngredients, setAllIngredients] = useState<IngredientItem[]>(INGREDIENT_DATABASE);
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     loadCustomIngredients();
+    loadSeededIngredients();
   }, []);
 
   useEffect(() => {
@@ -149,8 +151,19 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
   }, [value]);
 
   useEffect(() => {
-    setAllIngredients([...INGREDIENT_DATABASE, ...customIngredients]);
-  }, [customIngredients]);
+    // Merge builtin + seeded + custom, deduping by lowercase name
+    const byName = new Map<string, IngredientItem>();
+    const add = (items: IngredientItem[]) => {
+      for (const it of items) {
+        const key = it.name.toLowerCase();
+        if (!byName.has(key)) byName.set(key, it);
+      }
+    };
+    add(INGREDIENT_DATABASE);
+    add(seededIngredients);
+    add(customIngredients);
+    setAllIngredients(Array.from(byName.values()));
+  }, [customIngredients, seededIngredients]);
 
   useEffect(() => {
     const hasText = searchText.trim().length > 0;
@@ -172,6 +185,19 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
       }
     } catch (error) {
       console.error('Error loading custom ingredients:', error);
+    }
+  };
+
+  const loadSeededIngredients = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('seededIngredients');
+      if (stored) {
+        const parsed = JSON.parse(stored) as IngredientItem[];
+        // Tag them to indicate non-removable
+        setSeededIngredients(parsed.map(p => ({ ...p, customAdded: false })));
+      }
+    } catch (error) {
+      console.error('Error loading seeded ingredients:', error);
     }
   };
 

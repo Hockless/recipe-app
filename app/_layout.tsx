@@ -19,7 +19,7 @@ export default function RootLayout() {
   // Pre-seed recipes on first run or when seed version increases
   useEffect(() => {
     // Bump this number when adding new built-in recipes
-    void ensureSeeded(1);
+  void ensureSeeded(5);
   }, []);
 
   return (
