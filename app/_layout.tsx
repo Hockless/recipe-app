@@ -1,7 +1,9 @@
+import { ensureSeeded } from '@/utils/seed';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
 
 export default function RootLayout() {
@@ -13,6 +15,12 @@ export default function RootLayout() {
     // Async font loading only occurs in development.
     return null;
   }
+
+  // Pre-seed recipes on first run or when seed version increases
+  useEffect(() => {
+    // Bump this number when adding new built-in recipes
+    void ensureSeeded(1);
+  }, []);
 
   return (
     <ThemeProvider value={DefaultTheme}>

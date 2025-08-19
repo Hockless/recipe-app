@@ -138,6 +138,7 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
   const [showResults, setShowResults] = useState(false);
   const [customIngredients, setCustomIngredients] = useState<IngredientItem[]>([]);
   const [allIngredients, setAllIngredients] = useState<IngredientItem[]>(INGREDIENT_DATABASE);
+  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     loadCustomIngredients();
@@ -152,15 +153,16 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
   }, [customIngredients]);
 
   useEffect(() => {
-    if (searchText.trim().length > 0) {
+    const hasText = searchText.trim().length > 0;
+    if (hasText && isFocused) {
       performSearch(searchText);
       setShowResults(true);
     } else {
-      setSearchResults([]);
+      if (!hasText) setSearchResults([]);
       setShowResults(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText, allIngredients]);
+  }, [searchText, allIngredients, isFocused]);
 
   const loadCustomIngredients = async () => {
     try {
@@ -217,8 +219,17 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
   };
 
   const handleBlur = () => {
+    setIsFocused(false);
     // Delay hiding results to allow for selection
     setTimeout(() => setShowResults(false), 200);
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    if (searchText.trim().length > 0) {
+      performSearch(searchText);
+      setShowResults(true);
+    }
   };
 
   const addCustomIngredient = async () => {
@@ -268,7 +279,7 @@ export default function IngredientSearch({ onSelectIngredient, placeholder = "Se
         placeholder={placeholder}
         value={searchText}
         onChangeText={handleTextChange}
-        onFocus={() => setShowResults(searchResults.length > 0)}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         placeholderTextColor="#999"
       />

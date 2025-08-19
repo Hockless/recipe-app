@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Image, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import IngredientSearch, { IngredientItem } from '@/components/IngredientSearch';
 import RecipePhotoScanner from '@/components/RecipePhotoScanner';
@@ -48,6 +48,10 @@ export default function AddRecipeScreen() {
   // Unit picker state
   const [unitPickerVisible, setUnitPickerVisible] = useState(false);
   const [unitPickerForId, setUnitPickerForId] = useState<string | null>(null);
+  // Web success toast + saving state
+  const [showSavedBanner, setShowSavedBanner] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load recipe data if in edit mode
   useEffect(() => {
@@ -173,6 +177,7 @@ export default function AddRecipeScreen() {
     }
 
     try {
+      setIsSaving(true);
       const existingRecipes = await AsyncStorage.getItem('recipes');
       const recipes = existingRecipes ? JSON.parse(existingRecipes) : [];
 
@@ -202,12 +207,29 @@ export default function AddRecipeScreen() {
       await AsyncStorage.setItem('recipes', JSON.stringify(recipes));
 
       const successMessage = isEditMode ? 'Recipe updated successfully!' : 'Recipe saved successfully!';
-      Alert.alert('Success', successMessage, [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+
+      if (Platform.OS === 'web') {
+        // Show a lightweight toast and auto-navigate back after a short delay
+        setSavedMessage(successMessage);
+        setShowSavedBanner(true);
+        setIsSaving(false);
+        setTimeout(() => {
+          setShowSavedBanner(false);
+          if ((router as any).canGoBack?.()) {
+            router.back();
+          } else {
+            router.replace('/');
+          }
+        }, 1200);
+      } else {
+        Alert.alert('Success', successMessage, [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
+      }
     } catch (error) {
       console.log('Save error:', error);
       Alert.alert('Error', 'Failed to save recipe. Please try again.');
+      setIsSaving(false);
     }
   };
 
@@ -253,6 +275,13 @@ export default function AddRecipeScreen() {
 
   return (
     <>
+      {showSavedBanner && (
+        <View style={styles.toastContainer} pointerEvents="none">
+          <View style={styles.toast}>
+            <ThemedText style={styles.toastText}>{savedMessage}</ThemedText>
+          </View>
+        </View>
+      )}
       {showScanner ? (
         <RecipePhotoScanner
           onRecipeExtracted={handleScannedRecipe}
@@ -450,9 +479,9 @@ export default function AddRecipeScreen() {
               </View>
             </Modal>
 
-            <TouchableOpacity onPress={saveRecipe} style={styles.saveButton}>
+            <TouchableOpacity onPress={saveRecipe} style={[styles.saveButton, isSaving && { opacity: 0.6 }]} disabled={isSaving}>
               <ThemedText style={styles.saveButtonText}>
-                {isEditMode ? 'Update Recipe' : 'Save Recipe'}
+                {isSaving ? (isEditMode ? 'Updating…' : 'Saving…') : (isEditMode ? 'Update Recipe' : 'Save Recipe')}
               </ThemedText>
             </TouchableOpacity>
           </ThemedView>
@@ -580,6 +609,29 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  toastContainer: {
+    position: 'absolute',
+    top: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10000,
+  },
+  toast: {
+    backgroundColor: '#16a34a',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  toastText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
   scanButton: {
     backgroundColor: '#4A90E2',
     paddingHorizontal: 12,
@@ -642,7 +694,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
   qtyInput: {
-    width: 70,
+  width: 90,
     marginRight: 8,
   },
   unitButton: {

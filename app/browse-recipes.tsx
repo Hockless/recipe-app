@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -70,9 +70,22 @@ export default function BrowseRecipesScreen() {
     });
   };
 
+  const isSeedRecipe = (id: string) => String(id).startsWith('seed-');
+
   // Extract actual deletion into a helper so we can call it from both mobile (Alert) and web (confirm)
   const performRecipeDeletion = async (recipeId: string) => {
     try {
+      if (isSeedRecipe(recipeId)) {
+        // Guard: seeded recipes cannot be deleted
+        if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+            window.alert('Built-in recipes cannot be deleted.');
+          }
+        } else {
+          Alert.alert('Not allowed', 'Built-in recipes cannot be deleted.');
+        }
+        return;
+      }
       const storedRecipes = await AsyncStorage.getItem('recipes');
       if (!storedRecipes) return;
       const parsedRecipes = JSON.parse(storedRecipes) as Recipe[];
@@ -88,6 +101,16 @@ export default function BrowseRecipesScreen() {
   };
 
   const deleteRecipe = async (recipeId: string, recipeTitle: string) => {
+    if (isSeedRecipe(recipeId)) {
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+          window.alert('Built-in recipes cannot be deleted.');
+        }
+      } else {
+        Alert.alert('Not allowed', 'Built-in recipes cannot be deleted.');
+      }
+      return;
+    }
     if (Platform.OS === 'web') {
       // React Native Web: use window.confirm to get a Yes/No dialog on web.
       const confirmed = typeof window !== 'undefined' && typeof window.confirm === 'function'
@@ -167,9 +190,16 @@ export default function BrowseRecipesScreen() {
           recipes.map((recipe) => (
             <ThemedView key={recipe.id} style={styles.recipeCard}>
               <ThemedView style={styles.recipeHeader}>
-                <ThemedText type="defaultSemiBold" style={styles.recipeTitle}>
-                  {recipe.title}
-                </ThemedText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <ThemedText type="defaultSemiBold" style={styles.recipeTitle}>
+                    {recipe.title}
+                  </ThemedText>
+                  {isSeedRecipe(recipe.id) && (
+                    <ThemedView style={styles.builtInBadge}>
+                      <ThemedText style={styles.builtInBadgeText}>Built-in</ThemedText>
+                    </ThemedView>
+                  )}
+                </View>
                 <ThemedView style={styles.actionButtons}>
                   <TouchableOpacity 
                     style={styles.editButton}
@@ -180,15 +210,17 @@ export default function BrowseRecipesScreen() {
                   >
                     <ThemedText style={styles.editButtonText}>✏️ Edit</ThemedText>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.deleteButton}
-                    onPress={() => {
-                      deleteRecipe(recipe.id, recipe.title);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText style={styles.deleteButtonText}>🗑️</ThemedText>
-                  </TouchableOpacity>
+                  {!isSeedRecipe(recipe.id) && (
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => {
+                        deleteRecipe(recipe.id, recipe.title);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <ThemedText style={styles.deleteButtonText}>🗑️</ThemedText>
+                    </TouchableOpacity>
+                  )}
                 </ThemedView>
               </ThemedView>
               
@@ -402,5 +434,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  builtInBadge: {
+    backgroundColor: '#e5e7eb',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  builtInBadgeText: {
+    fontSize: 10,
+    color: '#374151',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
