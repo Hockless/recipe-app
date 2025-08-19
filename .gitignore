@@ -18,6 +18,10 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Native folders for bare workflow
+android/
+ios/
+
 # Metro
 .metro-health-check*
 
@@ -37,3 +41,9 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Local bundler caches
+.bundle/
+
+# Android release artifacts
+*.apk
