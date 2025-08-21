@@ -37,6 +37,7 @@ export default function AddRecipeScreen() {
   // Check if we're in edit mode
   const isEditMode = params.editMode === 'true';
   const editRecipeId = params.recipeId as string;
+  const isSeedEdit = isEditMode && editRecipeId && String(editRecipeId).startsWith('seed-');
   
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
@@ -55,6 +56,11 @@ export default function AddRecipeScreen() {
 
   // Load recipe data if in edit mode
   useEffect(() => {
+    if (isSeedEdit) {
+      // Redirect to view screen instead of allowing edit
+      router.replace({ pathname: '/recipe/[id]', params: { id: editRecipeId } });
+      return;
+    }
     if (isEditMode && params.recipeData) {
       try {
         const recipeData = JSON.parse(params.recipeData as string) as Recipe;
@@ -71,7 +77,7 @@ export default function AddRecipeScreen() {
         Alert.alert('Error', 'Failed to load recipe data for editing');
       }
     }
-  }, [isEditMode, params.recipeData]);
+  }, [isEditMode, isSeedEdit, params.recipeData]);
 
   const addIngredient = () => {
     const newIngredient: Ingredient = {
@@ -159,6 +165,10 @@ export default function AddRecipeScreen() {
 
   // Save (restored, now ensures amount is composed from qty/unit)
   const saveRecipe = async () => {
+    if (isSeedEdit) {
+      Alert.alert('Not allowed', 'Built-in recipes cannot be modified.');
+      return;
+    }
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a recipe title');
       return;
@@ -295,7 +305,7 @@ export default function AddRecipeScreen() {
               <ThemedText style={styles.backButtonText}>← Back</ThemedText>
             </TouchableOpacity>
             <ThemedText type="title" style={styles.title}>
-              {isEditMode ? 'Edit Recipe' : 'Add New Recipe'}
+              {isSeedEdit ? 'View Recipe' : (isEditMode ? 'Edit Recipe' : 'Add New Recipe')}
             </ThemedText>
           </ThemedView>
 
@@ -479,11 +489,13 @@ export default function AddRecipeScreen() {
               </View>
             </Modal>
 
+            {!isSeedEdit && (
             <TouchableOpacity onPress={saveRecipe} style={[styles.saveButton, isSaving && { opacity: 0.6 }]} disabled={isSaving}>
               <ThemedText style={styles.saveButtonText}>
                 {isSaving ? (isEditMode ? 'Updating…' : 'Saving…') : (isEditMode ? 'Update Recipe' : 'Save Recipe')}
               </ThemedText>
             </TouchableOpacity>
+            )}
           </ThemedView>
         </ScrollView>
       )}

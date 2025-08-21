@@ -35,6 +35,8 @@ export default function RootLayout() {
         <Stack.Screen name="random-meal-plan" options={{ headerShown: false }} />
         <Stack.Screen name="fridge" options={{ headerShown: false }} />
         <Stack.Screen name="homepage" options={{ headerShown: false }} />
+  <Stack.Screen name="bin-reminders" options={{ headerShown: false }} />
+  <Stack.Screen name="commute-planner" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

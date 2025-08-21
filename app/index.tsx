@@ -1,5 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -7,6 +9,23 @@ import { ThemedView } from '@/components/ThemedView';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [recipeCount, setRecipeCount] = useState<number | null>(null);
+  const [receiptCount, setReceiptCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        const r = await AsyncStorage.getItem('recipes');
+        if (r) setRecipeCount(JSON.parse(r).length);
+      } catch {}
+      try {
+        const rec = await AsyncStorage.getItem('receipts');
+        if (rec) setReceiptCount(JSON.parse(rec).length);
+      } catch {}
+    };
+    loadCounts();
+  }, []);
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#FF6B6B', dark: '#8B0000' }}
@@ -17,85 +36,115 @@ export default function HomeScreen() {
       }>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={styles.mainTitle}>
-          Lid and Jim&apos;s Recipe Book
+          Lid & Jim&apos;s Home Hub
         </ThemedText>
         <ThemedText style={styles.subtitle}>
-          Delicious recipes, made with love ❤️
+          Meals • Groceries • Pantry • Receipts • Reminders • Commute
         </ThemedText>
+        <View style={styles.metricsRow}>
+          {recipeCount !== null && (
+            <View style={styles.metricChip}><ThemedText style={styles.metricText}>{recipeCount} recipes</ThemedText></View>
+          )}
+          {receiptCount !== null && (
+            <View style={styles.metricChip}><ThemedText style={styles.metricText}>{receiptCount} receipts</ThemedText></View>
+          )}
+        </View>
       </ThemedView>
       
       <ThemedView style={styles.welcomeContainer}>
-        <ThemedText type="subtitle">Welcome to your kitchen!</ThemedText>
+        <ThemedText type="subtitle">All your household flow in one place</ThemedText>
         <ThemedText style={styles.welcomeText}>
-          Discover amazing recipes, save your favorites, and create culinary masterpieces together.
+          Plan dinners, auto-build shopping lists, track pantry & fridge items, scan receipts, set bin reminders and pick the best train — together.
         </ThemedText>
       </ThemedView>
 
       <ThemedView style={styles.quickActionsContainer}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>Quick Actions</ThemedText>
-        
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/browse-recipes')}>
-          <ThemedText style={styles.actionEmoji}>🔍</ThemedText>
-          <ThemedView style={styles.actionTextContainer} lightColor="transparent" darkColor="transparent">
-            <ThemedText type="defaultSemiBold">Browse Recipes</ThemedText>
-            <ThemedText style={styles.actionDescription}>Explore our collection</ThemedText>
+
+        {/* Combined Recipes Card */}
+        <TouchableOpacity
+          style={[styles.actionButton, styles.groupCard]}
+          onPress={() => router.push('/browse-recipes')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>🍲</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <View style={styles.titleRow}>
+              <ThemedText type="defaultSemiBold">Recipes</ThemedText>
+              {recipeCount !== null && (
+                <View style={styles.badge}><ThemedText style={styles.badgeText}>{recipeCount}</ThemedText></View>
+              )}
+            </View>
+            <ThemedText style={styles.actionDescription}>Browse or add new recipes</ThemedText>
+            <ThemedView style={styles.inlineActions}>
+              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/browse-recipes')}>
+                <ThemedText style={styles.inlinePillText}>Browse</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/add-recipe')}>
+                <ThemedText style={styles.inlinePillText}>Add</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/meal-plan')}>
+                <ThemedText style={styles.inlinePillText}>Meal Plan</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
           </ThemedView>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/add-recipe')}>
-          <ThemedText style={styles.actionEmoji}>📝</ThemedText>
-          <ThemedView style={styles.actionTextContainer} lightColor="transparent" darkColor="transparent">
-            <ThemedText type="defaultSemiBold">Add New Recipe</ThemedText>
-            <ThemedText style={styles.actionDescription}>Share your creations</ThemedText>
+        {/* Combined Groceries Card (now includes Fridge & Ingredients) */}
+        <TouchableOpacity
+          style={[styles.actionButton, styles.groupCard]}
+          onPress={() => router.push('/shopping-list')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>🛍️</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <View style={styles.titleRow}>
+              <ThemedText type="defaultSemiBold">Groceries</ThemedText>
+              {receiptCount !== null && (
+                <View style={[styles.badge, styles.badgeNeutral]}><ThemedText style={styles.badgeText}>{receiptCount}</ThemedText></View>
+              )}
+            </View>
+            <ThemedText style={styles.actionDescription}>Shopping, receipts & pantry</ThemedText>
+            <ThemedView style={styles.inlineActions}>
+              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/shopping-list')}>
+                <ThemedText style={styles.inlinePillText}>List</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/receipts')}>
+                <ThemedText style={styles.inlinePillText}>Receipts</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/fridge')}>
+                <ThemedText style={styles.inlinePillText}>Fridge</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/ingredient-manager')}>
+                <ThemedText style={styles.inlinePillText}>Ingredients</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
           </ThemedView>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/meal-plan')}>
-          <ThemedText style={styles.actionEmoji}>📅</ThemedText>
-          <ThemedView style={styles.actionTextContainer} lightColor="transparent" darkColor="transparent">
-            <ThemedText type="defaultSemiBold">Weekly Meal Plan</ThemedText>
-            <ThemedText style={styles.actionDescription}>Plan recipes for the week</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/shopping-list')}>
-          <ThemedText style={styles.actionEmoji}>🛒</ThemedText>
-          <ThemedView style={styles.actionTextContainer} lightColor="transparent" darkColor="transparent">
-            <ThemedText type="defaultSemiBold">Shopping List</ThemedText>
-            <ThemedText style={styles.actionDescription}>Auto-generated from meal plan</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
-
-        {/* New: Bin Reminders */}
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/bin-reminders')}>
+        {/* Separate Bin Reminders Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+            onPress={() => router.push('/bin-reminders')}
+            activeOpacity={0.85}
+        >
           <ThemedText style={styles.actionEmoji}>🗑️</ThemedText>
-          <ThemedView style={styles.actionTextContainer} lightColor="transparent" darkColor="transparent">
+          <ThemedView style={styles.actionTextContainer}>
             <ThemedText type="defaultSemiBold">Bin Reminders</ThemedText>
             <ThemedText style={styles.actionDescription}>Tuesday 5pm alerts</ThemedText>
           </ThemedView>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/fridge')}>
-          <ThemedText style={styles.actionEmoji}>🥬</ThemedText>
-          <ThemedView style={styles.actionTextContainer} lightColor="transparent" darkColor="transparent">
-            <ThemedText type="defaultSemiBold">Your Fridge</ThemedText>
-            <ThemedText style={styles.actionDescription}>Skip ingredients you already have</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/ingredient-manager')}>
-          <ThemedText style={styles.actionEmoji}>🥕</ThemedText>
-          <ThemedView style={styles.actionTextContainer} lightColor="transparent" darkColor="transparent">
-            <ThemedText type="defaultSemiBold">Ingredient Database</ThemedText>
-            <ThemedText style={styles.actionDescription}>Smart search with 100+ ingredients</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/receipts')}>
-          <ThemedText style={styles.actionEmoji}>🧾</ThemedText>
-          <ThemedView style={styles.actionTextContainer} lightColor="transparent" darkColor="transparent">
-            <ThemedText type="defaultSemiBold">Receipt Tracker</ThemedText>
-            <ThemedText style={styles.actionDescription}>Track your food costs</ThemedText>
+        {/* Commute Planner Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/commute-planner')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>🚆</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <ThemedText type="defaultSemiBold">Commute Planner</ThemedText>
+            <ThemedText style={styles.actionDescription}>Best train to arrive on time</ThemedText>
           </ThemedView>
         </TouchableOpacity>
       </ThemedView>
@@ -134,6 +183,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.85,
     fontWeight: '500',
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+    justifyContent: 'center',
+  },
+  metricChip: {
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  metricText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   welcomeContainer: {
     paddingHorizontal: 20,
@@ -191,5 +259,49 @@ const styles = StyleSheet.create({
     opacity: 0.75,
     marginTop: 4,
     lineHeight: 20,
+  },
+  // New grouped CTA styles
+  groupCard: {
+    backgroundColor: 'rgba(255,107,107,0.18)',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inlineActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  inlinePill: {
+    backgroundColor: 'rgba(255,107,107,0.25)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,107,0.35)',
+  },
+  inlinePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  badge: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 8,
+    paddingVertical: Platform.select({ ios: 2, default: 3 }),
+    borderRadius: 12,
+    minWidth: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeNeutral: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

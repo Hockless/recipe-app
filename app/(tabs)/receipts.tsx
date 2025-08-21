@@ -10,7 +10,7 @@ export default function ReceiptsScreen() {
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#F0E68C', dark: '#4A4A00' }}
-      headerImage={<Ionicons size={310} name="receipt" style={styles.headerImage} />}>
+      headerImage={<Ionicons size={310} name="receipt" style={styles.headerImage} />}> 
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Receipt Scanner</ThemedText>
       </ThemedView>

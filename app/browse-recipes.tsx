@@ -19,12 +19,14 @@ interface Recipe {
   instructions?: string;
   imageUri?: string;
   dateCreated: string;
+  tags?: string[];
 }
 
 export default function BrowseRecipesScreen() {
   const router = useRouter();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTagFilter, setActiveTagFilter] = useState<string>('All'); // 'All' | 'Keto' | 'Mediterranean'
 
   // New: Back handler with web/no-history fallback
   const handleBack = () => {
@@ -134,7 +136,10 @@ export default function BrowseRecipesScreen() {
   };
 
   const editRecipe = (recipe: Recipe) => {
-    // Navigate to add-recipe page with editing mode
+    if (isSeedRecipe(recipe.id)) {
+      router.push({ pathname: '/recipe/[id]', params: { id: recipe.id } });
+      return;
+    }
     router.push({
       pathname: '/add-recipe',
       params: { 
@@ -144,6 +149,10 @@ export default function BrowseRecipesScreen() {
       }
     });
   };
+
+  const filteredRecipes = activeTagFilter === 'All'
+    ? recipes
+    : recipes.filter(r => r.tags && r.tags.includes(activeTagFilter));
 
   return (
     <ScrollView 
@@ -172,6 +181,26 @@ export default function BrowseRecipesScreen() {
       </ThemedView>
 
       <ThemedView style={styles.content}>
+        <ThemedView style={styles.filterBar}>
+          {['All','Keto','Mediterranean'].map(tag => {
+            const active = activeTagFilter === tag;
+            return (
+              <TouchableOpacity
+                key={tag}
+                onPress={() => setActiveTagFilter(tag)}
+                style={[styles.filterPill, active && styles.filterPillActive]}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={[styles.filterPillText, active && styles.filterPillTextActive]}>
+                  {tag}
+                </ThemedText>
+              </TouchableOpacity>
+            );
+          })}
+        </ThemedView>
+        {activeTagFilter !== 'All' && (
+          <ThemedText style={styles.filterInfo}>Showing {filteredRecipes.length} {activeTagFilter} recipe{filteredRecipes.length !== 1 ? 's' : ''}</ThemedText>
+        )}
         {recipes.length === 0 ? (
           <ThemedView style={styles.emptyState}>
             <ThemedText style={styles.emptyEmoji}>📝</ThemedText>
@@ -187,29 +216,33 @@ export default function BrowseRecipesScreen() {
             </TouchableOpacity>
           </ThemedView>
         ) : (
-          recipes.map((recipe) => (
-            <ThemedView key={recipe.id} style={styles.recipeCard}>
+          filteredRecipes.map((recipe) => (
+            <TouchableOpacity key={recipe.id} activeOpacity={0.8} onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: recipe.id } })}>
+            <ThemedView style={styles.recipeCard}>
               <ThemedView style={styles.recipeHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   <ThemedText type="defaultSemiBold" style={styles.recipeTitle}>
                     {recipe.title}
                   </ThemedText>
-                  {isSeedRecipe(recipe.id) && (
-                    <ThemedView style={styles.builtInBadge}>
-                      <ThemedText style={styles.builtInBadgeText}>Built-in</ThemedText>
-                    </ThemedView>
-                  )}
                 </View>
                 <ThemedView style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    style={styles.editButton}
-                    onPress={() => {
-                      editRecipe(recipe);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText style={styles.editButtonText}>✏️ Edit</ThemedText>
-                  </TouchableOpacity>
+                  {!isSeedRecipe(recipe.id) ? (
+                    <TouchableOpacity 
+                      style={styles.editButton}
+                      onPress={() => { editRecipe(recipe); }}
+                      activeOpacity={0.7}
+                    >
+                      <ThemedText style={styles.editButtonText}>✏️ Edit</ThemedText>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.viewButton}
+                      onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: recipe.id } })}
+                      activeOpacity={0.7}
+                    >
+                      <ThemedText style={styles.viewButtonText}>👁 View</ThemedText>
+                    </TouchableOpacity>
+                  )}
                   {!isSeedRecipe(recipe.id) && (
                     <TouchableOpacity 
                       style={styles.deleteButton}
@@ -245,17 +278,23 @@ export default function BrowseRecipesScreen() {
                 )}
               </ThemedView>
 
-              {recipe.instructions && (
-                <ThemedView style={styles.instructionsPreview}>
-                  <ThemedText style={styles.instructionsLabel}>Instructions:</ThemedText>
-                  <ThemedText style={styles.instructionsText}>
-                    {recipe.instructions.length > 100 
-                      ? `${recipe.instructions.substring(0, 100)}...` 
-                      : recipe.instructions}
-                  </ThemedText>
+              {/* Instructions preview removed to simplify card UI */}
+              {(isSeedRecipe(recipe.id) || (recipe.tags && recipe.tags.length > 0)) && (
+                <ThemedView style={styles.tagRow}>
+                  {isSeedRecipe(recipe.id) && (
+                    <ThemedView style={styles.builtInBadge}>
+                      <ThemedText style={styles.builtInBadgeText}>Built-in</ThemedText>
+                    </ThemedView>
+                  )}
+                  {recipe.tags?.map(t => (
+                    <ThemedView key={t} style={[styles.tagPill, t === 'Keto' ? styles.tagKeto : t === 'Mediterranean' ? styles.tagMed : null]}>
+                      <ThemedText style={styles.tagText}>{t}</ThemedText>
+                    </ThemedView>
+                  ))}
                 </ThemedView>
               )}
             </ThemedView>
+            </TouchableOpacity>
           ))
         )}
       </ThemedView>
@@ -309,6 +348,34 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  filterBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  filterPill: {
+    backgroundColor: '#ececec',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  filterPillActive: {
+    backgroundColor: '#FF6B6B',
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#444',
+  },
+  filterPillTextActive: {
+    color: '#fff',
+  },
+  filterInfo: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 10,
   },
   emptyState: {
     alignItems: 'center',
@@ -379,6 +446,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  viewButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  viewButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   deleteButton: {
     backgroundColor: '#ff4444',
     paddingHorizontal: 12,
@@ -418,34 +498,23 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 5,
   },
-  instructionsPreview: {
-    marginTop: 10,
-    padding: 12,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-  },
-  instructionsLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
-    marginBottom: 5,
-  },
-  instructionsText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
+  // Instructions preview styles removed
   builtInBadge: {
-    backgroundColor: '#e5e7eb',
-    paddingHorizontal: 8,
+    backgroundColor: '#ffe0e0',
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
-    marginLeft: 8,
+    borderRadius: 14,
   },
   builtInBadgeText: {
-    fontSize: 10,
-    color: '#374151',
+    fontSize: 11,
+    color: '#d94848',
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  tagPill: { backgroundColor: '#e2e8f0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
+  tagText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, color: '#334155' },
+  tagKeto: { backgroundColor: '#d1fae5' },
+  tagMed: { backgroundColor: '#ffe4e6' },
 });

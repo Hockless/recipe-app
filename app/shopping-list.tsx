@@ -6,6 +6,7 @@ import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View
 import { INGREDIENT_DATABASE } from '@/components/IngredientSearch';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { loadPantry, parseAmount } from '@/utils/pantry';
 import { UNIT_OPTIONS, buildAmount, type UnitGroup, type UnitOption } from '@/utils/units';
 
 interface Ingredient {
@@ -76,6 +77,7 @@ export default function ShoppingListScreen() {
   const [fridgeItems, setFridgeItems] = useState<FridgeItem[]>([]);
   // Seeded ingredient aliases (from seeding)
   const [seededAliases, setSeededAliases] = useState<{ name: string; aliases: string[] }[]>([]);
+  const [pantryItems, setPantryItems] = useState<{ name: string; quantity: number; unit: string }[]>([]);
 
   // Helpers: canonicalization
   const stripParentheticals = (s: string) => s.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
@@ -187,12 +189,13 @@ export default function ShoppingListScreen() {
 
       // Load seeded ingredient aliases (used for canonicalization)
       const storedSeeded = await AsyncStorage.getItem('seededIngredients');
-      if (storedSeeded) {
+  if (storedSeeded) {
         try {
           const parsed = JSON.parse(storedSeeded) as { name: string; aliases: string[] }[];
           setSeededAliases(parsed);
         } catch {}
       }
+  setPantryItems(await loadPantry());
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -213,9 +216,10 @@ export default function ShoppingListScreen() {
     const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
 
     // New: build a normalized set of ingredients user already has
-    const fridgeSet = new Set(
-      fridgeItems.map(i => baseNormalize(i.name || '')).filter(Boolean) as string[]
-    );
+  const fridgeSet = new Set(fridgeItems.map(i => baseNormalize(i.name || '')).filter(Boolean) as string[]);
+  const pantryMap = new Map<string, { qty: number; unit: string }>();
+  pantryItems.forEach(p => pantryMap.set(p.name.toLowerCase() + '::' + p.unit, { qty: p.quantity, unit: p.unit }));
+  const requiredAgg = new Map<string, { name: string; unit: string; qty: number }>();
 
     // Add items from meal plan (include today and future meals)
     if (recipes.length > 0 && mealPlan.length > 0) {
@@ -232,25 +236,54 @@ export default function ShoppingListScreen() {
             // New: Skip ingredients that are already in the user's fridge
             if (fridgeSet.has(baseNormalize(ingredient.name))) return;
             
-            if (ingredientMap[canonicalName]) {
-              if (ingredient.amount && !ingredientMap[canonicalName].amounts.includes(ingredient.amount)) {
-                ingredientMap[canonicalName].amounts.push(ingredient.amount);
-              }
-              if (!ingredientMap[canonicalName].recipes.includes(recipe.title)) {
-                ingredientMap[canonicalName].recipes.push(recipe.title);
-              }
+            const { qty, unit } = parseAmount(ingredient.amount);
+            if (qty && unit) {
+              const key = canonicalName.toLowerCase() + '::' + unit;
+              const cur = requiredAgg.get(key) || { name: canonicalName, unit, qty: 0 };
+              cur.qty += qty;
+              requiredAgg.set(key, cur);
             } else {
-              ingredientMap[canonicalName] = {
-                name: canonicalName,
-                amounts: ingredient.amount ? [ingredient.amount] : [],
-                recipes: [recipe.title],
-                checked: checkedItems[canonicalName.toLowerCase()] || false,
-                isCustom: false
-              };
+              if (ingredientMap[canonicalName]) {
+                if (ingredient.amount && !ingredientMap[canonicalName].amounts.includes(ingredient.amount)) {
+                  ingredientMap[canonicalName].amounts.push(ingredient.amount);
+                }
+                if (!ingredientMap[canonicalName].recipes.includes(recipe.title)) {
+                  ingredientMap[canonicalName].recipes.push(recipe.title);
+                }
+              } else {
+                ingredientMap[canonicalName] = {
+                  name: canonicalName,
+                  amounts: ingredient.amount ? [ingredient.amount] : [],
+                  recipes: [recipe.title],
+                  checked: checkedItems[canonicalName.toLowerCase()] || false,
+                  isCustom: false
+                };
+              }
             }
           });
         }
       });
+    }
+
+    for (const req of requiredAgg.values()) {
+      const key = req.name.toLowerCase() + '::' + req.unit;
+      const pantryEntry = pantryMap.get(key);
+      const deficit = pantryEntry ? req.qty - pantryEntry.qty : req.qty;
+      if (deficit > 0.0001) {
+        const amountStr = `${deficit % 1 === 0 ? deficit : deficit.toFixed(2)} ${req.unit}`;
+        if (ingredientMap[req.name]) {
+          if (!ingredientMap[req.name].amounts.includes(amountStr)) ingredientMap[req.name].amounts.push(amountStr);
+          if (!ingredientMap[req.name].recipes.includes('Multiple')) ingredientMap[req.name].recipes.push('Multiple');
+        } else {
+          ingredientMap[req.name] = {
+            name: req.name,
+            amounts: [amountStr],
+            recipes: ['Multiple'],
+            checked: checkedItems[req.name.toLowerCase()] || false,
+            isCustom: false
+          };
+        }
+      }
     }
 
     // Add custom items
@@ -486,7 +519,7 @@ export default function ShoppingListScreen() {
   useEffect(() => {
     generateShoppingList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipes, mealPlan, checkedItems, customItems, currentHistoryIndex, fridgeItems]);
+  }, [recipes, mealPlan, checkedItems, customItems, currentHistoryIndex, fridgeItems, pantryItems]);
 
   useEffect(() => {
     // Auto-save to history when meal plan changes
@@ -498,6 +531,37 @@ export default function ShoppingListScreen() {
 
   const checkedCount = shoppingList.filter(item => checkedItems[item.name.toLowerCase().trim()]).length;
   const fridgeSkipCount = getFridgeSkipCount();
+
+  // Category grouping logic
+  const CATEGORY_DEFS: { name: string; keywords: string[] }[] = [
+    // Produce & fresh items
+    { name: 'Vegetables', keywords: ['onion','pepper','pepper ','pepper,','jalapeño','jalapeno','jalapeños','jalapenos','courgette','zucchini','tomato','lettuce','leek','spinach','mushroom','broccoli','squash','carrot','pak choi','cavolo','garlic','ginger','chilli','spring onion','lemon'] },
+    { name: 'Herbs', keywords: ['parsley','coriander','thyme','rosemary','dill','basil','oregano','mint'] },
+    // Proteins
+    { name: 'Meat', keywords: ['chicken','lamb','sausage','bacon','pancetta','chorizo','thigh','breast','mince','pork','prosciutto','ham'] },
+    { name: 'Seafood', keywords: ['fish','prawn','prawns','haddock','cod','plaice','bass','hake','mackerel'] },
+    // Dairy & eggs
+    { name: 'Dairy', keywords: ['cheese','feta','mozzarella','parmesan','yoghurt','yogurt','butter','egg'] },
+    { name: 'Spices & Seasoning', keywords: ['cumin','coriander powder','paprika','garam masala','cinnamon','turmeric','fajita','piri piri','pepper','salt','seasoning','curry paste','chilli flakes','bay leaf','mixed herbs'] },
+    { name: 'Pantry / Dry', keywords: ['oil','lentil','beans','bean','barley','chickpea','apricot','almond','anchovy','pesto','tomato purée','tomato puree','stock cube','noodle','pasta','spaghetti','courgetti','nuts','pine nuts','seeds','flour','vinegar','sriracha','soy sauce','miso'] },
+  ];
+
+  const categorizeItem = (rawName: string): string => {
+    const name = rawName.toLowerCase();
+    for (const cat of CATEGORY_DEFS) {
+      if (cat.keywords.some(k => name.includes(k))) return cat.name;
+    }
+    return 'Other';
+  };
+
+  const grouped = shoppingList.reduce<Record<string, typeof shoppingList>>((acc, item) => {
+    const cat = categorizeItem(item.name);
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {});
+
+  const CATEGORY_ORDER = [...CATEGORY_DEFS.map(c => c.name), 'Other'];
 
   return (
     <ScrollView style={styles.container}>
@@ -602,11 +666,14 @@ export default function ShoppingListScreen() {
             )}
 
             <ThemedView style={styles.shoppingItems}>
-              {shoppingList.map((item, index) => {
+              {CATEGORY_ORDER.filter(c => grouped[c] && grouped[c].length > 0).map(category => (
+                <ThemedView key={category} style={styles.categoryBlock}>
+                  <ThemedText style={styles.categoryHeading}>{category}</ThemedText>
+                  {grouped[category].map((item, index) => {
                 const isChecked = checkedItems[item.name.toLowerCase().trim()];
                 return (
                   <TouchableOpacity
-                    key={`${item.name}-${index}`}
+                    key={`${category}-${item.name}-${index}`}
                     style={[styles.shoppingItem, isChecked && styles.checkedItem]}
                     onPress={() => currentHistoryIndex === -1 ? toggleItem(item.name) : null}
                   >
@@ -640,7 +707,9 @@ export default function ShoppingListScreen() {
                     </ThemedView>
                   </TouchableOpacity>
                 );
-              })}
+                  })}
+                </ThemedView>
+              ))}
             </ThemedView>
           </>
         )}
@@ -936,6 +1005,18 @@ const styles = StyleSheet.create({
   },
   shoppingItems: {
     gap: 12,
+  },
+  categoryBlock: {
+    marginBottom: 28,
+  },
+  categoryHeading: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FF6B6B',
+    marginBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: '#FFE0E0',
+    paddingBottom: 4,
   },
   shoppingItem: {
     backgroundColor: '#f9f9f9',

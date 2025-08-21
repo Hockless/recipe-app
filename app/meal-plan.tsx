@@ -1,3 +1,4 @@
+import { loadPantry, PantryItem, parseAmount, savePantry } from '@/utils/pantry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -44,6 +45,8 @@ export default function WeeklyTimelineScreen() {
   // New: rota state
   const [rotaPaused, setRotaPaused] = useState<RotaPausedMap>({});
   const [rotaWeekStartMap, setRotaWeekStartMap] = useState<RotaWeekStartMap>({});
+  const [cookedMap, setCookedMap] = useState<Record<string, boolean>>({});
+  const [pantry, setPantry] = useState<PantryItem[]>([]);
 
   // Get start of week (Monday)
   const getStartOfWeek = (date: Date) => {
@@ -118,8 +121,11 @@ export default function WeeklyTimelineScreen() {
       setRotaPaused(pausedRaw ? JSON.parse(pausedRaw) : {});
 
       // New: load weekly start person map
-      const startMapRaw = await AsyncStorage.getItem('rotaWeekStartMap');
-      setRotaWeekStartMap(startMapRaw ? JSON.parse(startMapRaw) : {});
+  const startMapRaw = await AsyncStorage.getItem('rotaWeekStartMap');
+  setRotaWeekStartMap(startMapRaw ? JSON.parse(startMapRaw) : {});
+  const cookedRaw = await AsyncStorage.getItem('cookedMeals');
+  setCookedMap(cookedRaw ? JSON.parse(cookedRaw) : {});
+  setPantry(await loadPantry());
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -209,6 +215,35 @@ export default function WeeklyTimelineScreen() {
 
   const getRecipeForDate = (date: string) => {
     return mealPlan.find(meal => meal.date === date);
+  };
+
+  const markCooked = async (dateStr: string) => {
+    const next = { ...cookedMap, [dateStr]: !cookedMap[dateStr] };
+    if (!next[dateStr]) delete next[dateStr];
+    setCookedMap(next);
+    await AsyncStorage.setItem('cookedMeals', JSON.stringify(next));
+    if (next[dateStr]) {
+      const meal = getRecipeForDate(dateStr);
+      if (meal) {
+        const recipe = recipes.find(r => r.id === meal.recipeId);
+        if (recipe) {
+          let updated = [...pantry];
+          for (const ing of recipe.ingredients) {
+            const { qty, unit } = parseAmount(ing.amount);
+            if (qty && unit) {
+              const idx = updated.findIndex(p => p.name.toLowerCase() === ing.name.toLowerCase() && p.unit === unit);
+              if (idx >= 0) {
+                updated[idx].quantity = Math.max(0, +(updated[idx].quantity - qty).toFixed(3));
+                updated[idx].updatedAt = new Date().toISOString();
+              }
+            }
+          }
+          updated = updated.filter(p => p.quantity > 0);
+          setPantry(updated);
+          await savePantry(updated);
+        }
+      }
+    }
   };
 
   // New: derive cook for a given date in current week based on alternating order,
@@ -454,6 +489,7 @@ export default function WeeklyTimelineScreen() {
             const isToday = formatDate(new Date()) === dateString;
             const paused = isPaused(dateString);
             const cook = getCookForDate(day);
+            const cooked = cookedMap[dateString];
 
             return (
               <ThemedView key={dateString} style={[styles.dayCard, isToday && styles.todayCard, paused && styles.pausedCard]}>
@@ -504,7 +540,10 @@ export default function WeeklyTimelineScreen() {
                       {cook && (
                         <ThemedText style={styles.cookText}>👩‍🍳 Cook: {cook}</ThemedText>
                       )}
-                      <ThemedText style={styles.tapToRemove}>Tap to remove</ThemedText>
+                      <TouchableOpacity onPress={() => markCooked(dateString)} style={[styles.cookBtn, cooked && styles.cookBtnDone]}>
+                        <ThemedText style={styles.cookBtnText}>{cooked ? 'Cooked ✓' : 'Mark Cooked'}</ThemedText>
+                      </TouchableOpacity>
+                      <ThemedText style={styles.tapToRemove}>Tap background to remove</ThemedText>
                     </ThemedView>
                   ) : (
                     <ThemedView style={styles.emptySlot}>
@@ -826,6 +865,9 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
   },
+  cookBtn: { backgroundColor: '#4CAF50', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginBottom: 4 },
+  cookBtnDone: { backgroundColor: '#2e7d32' },
+  cookBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   emptySlot: {
     alignItems: 'center',
     backgroundColor: 'transparent',

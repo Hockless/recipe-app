@@ -14,6 +14,7 @@ export interface Recipe {
   instructions?: string;
   imageUri?: string;
   dateCreated: string; // ISO string
+  tags?: string[]; // e.g., ['Keto','Mediterranean']
 }
 
 function slugify(input: string) {
@@ -25,22 +26,6 @@ function slugify(input: string) {
 
 // Safe, generic sample data created for this app (not copied from any source)
 export const SEEDED_RECIPES: Recipe[] = [
-  {
-    id: 'seed-' + slugify('Simple Tomato Pasta'),
-    title: 'Simple Tomato Pasta',
-    ingredients: [
-      { id: 'i-1', name: 'Spaghetti', amount: '200 g' },
-      { id: 'i-2', name: 'Olive oil', amount: '2 tbsp' },
-      { id: 'i-3', name: 'Garlic', amount: '2 cloves' },
-      { id: 'i-4', name: 'Tomatoes (chopped)', amount: '400 g' },
-      { id: 'i-5', name: 'Salt', amount: 'to taste' },
-      { id: 'i-6', name: 'Black pepper', amount: 'to taste' },
-      { id: 'i-7', name: 'Basil (fresh)', amount: 'a few leaves' },
-    ],
-    instructions:
-      'Cook pasta in salted boiling water. Sauté garlic in olive oil, add tomatoes and simmer until saucy. Season and toss with pasta. Finish with basil.',
-    dateCreated: '2025-01-01T10:00:00.000Z',
-  },
   {
     id: 'seed-leek-goats-cheese-barley-risotto',
     title: "Leek and Goat's Cheese Barley Risotto",
@@ -141,20 +126,6 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions: 'Combine 1 tbsp curry paste, yoghurt, salt in bowl, add chicken, mix, marinate at least 1 hour. For sauce: heat oil in pan, fry onion 5 min, add garlic, ginger, 2 tbsp curry paste, cook 1½ min. Add 300ml water, tomato purée, bring to simmer, cook 5 min, blend smooth. Fry marinated chicken 3 min until browned, add sauce, cook 3–4 min until chicken cooked. Add water if sauce thickens. Serve with coriander and chilli.',
     dateCreated: '2025-01-14T00:00:00.000Z',
-  },
-  {
-    id: 'seed-' + slugify('Avocado Toast'),
-    title: 'Avocado Toast',
-    ingredients: [
-      { id: 'i-1', name: 'Bread slices', amount: '2 each' },
-      { id: 'i-2', name: 'Avocado', amount: '1 each' },
-      { id: 'i-3', name: 'Lemon juice', amount: '1 tsp' },
-      { id: 'i-4', name: 'Salt', amount: 'a pinch' },
-      { id: 'i-5', name: 'Chili flakes', amount: 'a pinch' },
-    ],
-    instructions:
-      'Toast bread. Mash avocado with lemon juice and salt. Spread on toast and finish with chili flakes.',
-    dateCreated: '2025-01-02T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Thai Pork Lettuce Cups'),
@@ -520,6 +491,59 @@ export const SEEDED_RECIPES: Recipe[] = [
   },
 ];
 
+// Tag mapping (title -> tags). Only affects built-in seeds. Spelling normalized.
+const TAG_MAP: Record<string, string[]> = {
+  "Leek and Goat's Cheese Barley Risotto": ['Mediterranean'],
+  'Roasted Vegetable Pasta with Mozzarella': ['Mediterranean'],
+  'Lamb Saag': ['Mediterranean'], // loosely categorised for variety
+  'Courgetti Spaghetti with Pine Nuts, Spinach and Pancetta': ['Keto','Mediterranean'],
+  "Cheat's One-pot Cassoulet": ['Mediterranean'],
+  'Chicken Tikka Masala': ['Mediterranean'],
+  'Thai Pork Lettuce Cups': ['Keto'],
+  'Pesto Courgetti Spaghetti with Red Pepper and Feta': ['Keto','Mediterranean'],
+  'Mixed Bean and Miso Salad with Chicken': ['Mediterranean'],
+  'Breakfast Burrito': ['Keto'],
+  'One Pan Squeezed Sausage Casserole': ['Keto'],
+  'Chinese Pork Balls in Mushroom Miso Broth': ['Keto'],
+  'Chicken Casserole with Chorizo, Thyme and Olives': ['Mediterranean'],
+  'Piri Piri Roast Chicken with Jalapeño Yoghurt': ['Keto','Mediterranean'],
+  'Keto-fried Chicken': ['Keto'],
+  'White Fish with Herby Green Dressing and Lentils': ['Mediterranean'],
+  'Made-in-Minutes Goan Prawn Curry with Spinach': ['Keto'],
+  'Easy Chicken Tagine': ['Mediterranean'],
+  'Chicken Wrapped in Parma Ham': ['Keto','Mediterranean'],
+  'Thai Curry with Prawns': ['Keto'],
+  'Pan-fried Fish with Lemon and Parsley': ['Keto','Mediterranean'],
+  'Smoked Haddock with Lentils': ['Mediterranean'],
+  'Chicken Caesar-ish Salad': ['Keto'],
+  'Shakshuka': ['Mediterranean'],
+  'French Bean Bowl with Feta and Pine Nuts': ['Mediterranean'],
+  'Cheesy Fajita Beef Casserole': ['Keto'],
+};
+
+// Titles of seed recipes that have been intentionally removed from the current seed set
+const REMOVED_SEED_TITLES = ['Simple Tomato Pasta', 'Avocado Toast'];
+
+function applySeedPatches(recipes: Recipe[]): Recipe[] {
+  // Remove deprecated seed recipes and inject/refresh tags for existing seeds
+  return recipes
+    .filter((r) => !REMOVED_SEED_TITLES.includes(r.title))
+    .map((r) => {
+      if (TAG_MAP[r.title]) {
+        if (!r.tags || TAG_MAP[r.title].some((t) => !(r.tags as string[]).includes(t))) {
+          return { ...r, tags: TAG_MAP[r.title] };
+        }
+      }
+      return r;
+    });
+}
+
+for (const r of SEEDED_RECIPES) {
+  if (TAG_MAP[r.title]) {
+    r.tags = TAG_MAP[r.title];
+  }
+}
+
 const SEED_VERSION_KEY = 'seedVersion';
 
 export async function ensureSeeded(targetVersion: number) {
@@ -539,12 +563,19 @@ export async function ensureSeeded(targetVersion: number) {
         const merged = mergeSeeds(existingRecipes, SEEDED_RECIPES);
         await AsyncStorage.setItem('recipes', JSON.stringify(merged));
     await ensureSeededIngredients(SEEDED_RECIPES);
+      } else {
+        // Apply non-breaking patches (tag injections / removals) even when no version bump
+        const patched = applySeedPatches(existingRecipes);
+        if (patched.length !== existingRecipes.length || patched.some((r, i) => r !== existingRecipes[i])) {
+          await AsyncStorage.setItem('recipes', JSON.stringify(patched));
+        }
       }
       return;
     }
 
     // Perform upgrade: merge seeds, avoiding duplicates by id
-    const merged = mergeSeeds(existingRecipes, SEEDED_RECIPES);
+  let merged = mergeSeeds(existingRecipes, SEEDED_RECIPES);
+  merged = applySeedPatches(merged);
     await AsyncStorage.setItem('recipes', JSON.stringify(merged));
     await AsyncStorage.setItem(SEED_VERSION_KEY, String(targetVersion));
   await ensureSeededIngredients(SEEDED_RECIPES);
