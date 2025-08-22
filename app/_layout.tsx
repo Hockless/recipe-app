@@ -11,16 +11,16 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+  // Pre-seed recipes on first run or when seed version increases
+  useEffect(() => {
+    // Bump this number when adding new built-in recipes
+    void ensureSeeded(5);
+  }, []);
+
   if (!loaded) {
     // Async font loading only occurs in development.
     return null;
   }
-
-  // Pre-seed recipes on first run or when seed version increases
-  useEffect(() => {
-    // Bump this number when adding new built-in recipes
-  void ensureSeeded(5);
-  }, []);
 
   return (
     <ThemeProvider value={DefaultTheme}>

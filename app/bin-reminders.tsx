@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // Removed static import to avoid bundling issues on web
 // import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
+import { BackButton } from '@/components/BackButton';
+import { shared } from '@/styles/theme';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -20,7 +21,6 @@ let NotificationsMod: typeof import('expo-notifications') | null = null;
 const isWeb = Platform.OS === 'web';
 
 export default function BinRemindersScreen() {
-  const router = useRouter();
   const [paused, setPaused] = useState<boolean>(false);
   const [nextColor, setNextColor] = useState<BinColor>('green');
   const [scheduledId, setScheduledId] = useState<string | null>(null);
@@ -198,12 +198,10 @@ export default function BinRemindersScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ThemedText style={styles.backButtonText}>← Back</ThemedText>
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Bin Reminders</ThemedText>
+    <ScrollView style={shared.screenContainer}>
+      <ThemedView style={shared.headerBar}>
+        <BackButton />
+        <ThemedText type="title" style={shared.screenTitle}>Bin Reminders</ThemedText>
         <ThemedText style={styles.subtitle}>Tuesday 5pm reminders with weekly colour rotation</ThemedText>
       </ThemedView>
 
@@ -262,29 +260,6 @@ export default function BinRemindersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: '#FF6B6B',
-  },
-  backButton: {
-    marginBottom: 10,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  title: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
   subtitle: {
     color: '#fff',
     fontSize: 16,

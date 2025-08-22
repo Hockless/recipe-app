@@ -1,3 +1,5 @@
+import { BackButton } from '@/components/BackButton';
+import { shared } from '@/styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -162,9 +164,7 @@ export default function BrowseRecipesScreen() {
       }
     >
       <ThemedView style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ThemedText style={styles.backButtonText}>← Back</ThemedText>
-        </TouchableOpacity>
+        <BackButton onPress={handleBack} />
         <ThemedText type="title" style={styles.title}>Your Recipes</ThemedText>
         <ThemedText style={styles.subtitle}>
           {recipes.length} recipe{recipes.length !== 1 ? 's' : ''} saved
@@ -303,23 +303,10 @@ export default function BrowseRecipesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: '#FF6B6B',
-  },
-  backButton: {
-    marginBottom: 10,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
+  container: shared.screenContainer,
+  header: shared.headerBar,
+  backButton: shared.backButton,
+  backButtonText: shared.backButtonText,
   title: {
     color: '#fff',
     fontSize: 28,

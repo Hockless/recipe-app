@@ -1,9 +1,11 @@
+import { BackButton } from '@/components/BackButton';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { shared } from '@/styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 
 interface Ingredient { id: string; name: string; amount: string; }
 interface Recipe { id: string; title: string; ingredients: Ingredient[]; instructions?: string; imageUri?: string; dateCreated: string; tags?: string[]; }
@@ -42,9 +44,7 @@ export default function ViewRecipeScreen() {
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ThemedText style={styles.backButtonText}>← Back</ThemedText>
-        </TouchableOpacity>
+        <BackButton onPress={handleBack} />
         <ThemedText type="title" style={styles.title}>{recipe.title}</ThemedText>
         {isSeed && (
           <ThemedView style={styles.builtInBadge}>
@@ -87,10 +87,10 @@ export default function ViewRecipeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20, backgroundColor: '#FF6B6B' },
-  backButton: { marginBottom: 10 },
-  backButtonText: { color: '#fff', fontSize: 16 },
+  container: shared.screenContainer,
+  header: shared.headerBar,
+  backButton: shared.backButton,
+  backButtonText: shared.backButtonText,
   title: { color: '#fff', fontSize: 26, fontWeight: 'bold' },
   builtInBadge: { backgroundColor: '#e5e7eb', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginTop: 8, alignSelf: 'flex-start' },
   builtInBadgeText: { fontSize: 10, color: '#374151', fontWeight: '700', letterSpacing: 0.2 },

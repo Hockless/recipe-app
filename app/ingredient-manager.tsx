@@ -1,6 +1,8 @@
+import { BackButton } from '@/components/BackButton';
 import { INGREDIENT_DATABASE, IngredientItem } from '@/components/IngredientSearch';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { shared } from '@/styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -275,9 +277,7 @@ export default function IngredientManagerScreen() {
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ThemedText style={styles.backButtonText}>← Back</ThemedText>
-        </TouchableOpacity>
+        <BackButton onPress={handleBack} />
         <ThemedText type="title" style={styles.title}>Ingredient Database</ThemedText>
         <ThemedText style={styles.subtitle}>
           Smart search with fuzzy matching - try typing &quot;car&quot; to find carrot!
@@ -524,23 +524,10 @@ export default function IngredientManagerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: '#FF6B6B',
-  },
-  backButton: {
-    marginBottom: 10,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
+  container: shared.screenContainer,
+  header: shared.headerBar,
+  backButton: shared.backButton,
+  backButtonText: shared.backButtonText,
   title: {
     color: '#fff',
     fontSize: 28,

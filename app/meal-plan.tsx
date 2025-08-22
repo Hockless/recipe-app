@@ -1,3 +1,5 @@
+import { BackButton } from '@/components/BackButton';
+import { shared } from '@/styles/theme';
 import { loadPantry, PantryItem, parseAmount, savePantry } from '@/utils/pantry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -405,12 +407,10 @@ export default function WeeklyTimelineScreen() {
   const weekStartPerson = getWeekStartPerson(currentWeek);
 
   return (
-    <ScrollView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ThemedText style={styles.backButtonText}>← Back</ThemedText>
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Weekly Meal Plan</ThemedText>
+    <ScrollView style={shared.screenContainer}>
+      <ThemedView style={shared.headerBar}>
+        <BackButton onPress={handleBack} />
+        <ThemedText type="title" style={shared.screenTitle}>Weekly Meal Plan</ThemedText>
         <ThemedText style={styles.subtitle}>Plan your recipes for the week</ThemedText>
         
         <TouchableOpacity 
@@ -612,29 +612,6 @@ export default function WeeklyTimelineScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: '#FF6B6B',
-  },
-  backButton: {
-    marginBottom: 10,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  title: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
   subtitle: {
     color: '#fff',
     fontSize: 16,

@@ -1,3 +1,4 @@
+import { shared } from '@/styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -59,7 +60,7 @@ export default function HomeScreen() {
       </ThemedView>
 
       <ThemedView style={styles.quickActionsContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Quick Actions</ThemedText>
+  <ThemedText type="subtitle" style={styles.sectionTitle}>Quick Actions</ThemedText>
 
         {/* Combined Recipes Card */}
         <TouchableOpacity
@@ -145,6 +146,19 @@ export default function HomeScreen() {
           <ThemedView style={styles.actionTextContainer}>
             <ThemedText type="defaultSemiBold">Commute Planner</ThemedText>
             <ThemedText style={styles.actionDescription}>Best train to arrive on time</ThemedText>
+          </ThemedView>
+        </TouchableOpacity>
+
+        {/* Personal Calendar Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/personal-calendar')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>🗓️</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <ThemedText type="defaultSemiBold">Personal Calendar</ThemedText>
+            <ThemedText style={styles.actionDescription}>Simple events & notes</ThemedText>
           </ThemedView>
         </TouchableOpacity>
       </ThemedView>
@@ -275,33 +289,14 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  inlinePill: {
-    backgroundColor: 'rgba(255,107,107,0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,107,0.35)',
-  },
-  inlinePillText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  inlinePill: shared.pill,
+  inlinePillText: { fontSize: 13, fontWeight: '600' },
   badge: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 8,
+    ...shared.badge,
     paddingVertical: Platform.select({ ios: 2, default: 3 }),
-    borderRadius: 12,
-    minWidth: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   badgeNeutral: {
     backgroundColor: 'rgba(0,0,0,0.25)',
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
-  },
+  badgeText: shared.badgeText,
 });

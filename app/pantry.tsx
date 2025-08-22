@@ -1,5 +1,7 @@
+import { BackButton } from '@/components/BackButton';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { shared } from '@/styles/theme';
 import { PantryItem, formatQuantity, loadPantry, savePantry } from '@/utils/pantry';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -55,9 +57,7 @@ export default function PantryScreen() {
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => ((router as any).canGoBack?.() ? router.back() : router.replace('/'))}>
-          <ThemedText style={styles.backButtonText}>← Back</ThemedText>
-        </TouchableOpacity>
+        <BackButton onPress={() => ((router as any).canGoBack?.() ? router.back() : router.replace('/'))} />
         <ThemedText type="title" style={styles.title}>Pantry</ThemedText>
         <ThemedText style={styles.subtitle}>Track staple ingredient quantities</ThemedText>
         <View style={styles.headerActions}>
@@ -109,10 +109,10 @@ export default function PantryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:{ flex:1 },
-  header:{ paddingTop:60,paddingHorizontal:20,paddingBottom:20, backgroundColor:'#795548' },
-  backButton:{ marginBottom:10 },
-  backButtonText:{ color:'#fff', fontSize:16 },
+  container: shared.screenContainer,
+  header: { ...shared.headerBar, backgroundColor: '#795548' },
+  backButton: shared.backButton,
+  backButtonText: shared.backButtonText,
   title:{ color:'#fff', fontSize:28, fontWeight:'bold', marginBottom:5 },
   subtitle:{ color:'#fff', fontSize:16, opacity:0.9 },
   headerActions:{ flexDirection:'row', justifyContent:'center', gap:10, marginTop:12 },

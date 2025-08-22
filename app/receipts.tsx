@@ -5,8 +5,10 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { BackButton } from '@/components/BackButton';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { shared } from '@/styles/theme';
 
 interface ReceiptItem {
   name: string;
@@ -204,9 +206,7 @@ export default function ReceiptsScreen() {
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ThemedText style={[styles.backButtonText, { color: headerTextColor }]}>← Back</ThemedText>
-        </TouchableOpacity>
+        <BackButton onPress={handleBack} />
         <ThemedText type="title" style={[styles.title, { color: headerTextColor }]}>Receipts</ThemedText>
         <ThemedText style={[styles.subtitle, { color: headerTextColor, opacity: 0.9 }]}>Track your food costs by saving receipt images and totals.</ThemedText>
         
@@ -337,23 +337,15 @@ export default function ReceiptsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: shared.screenContainer,
   header: {
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 20,
     backgroundColor: '#2196F3',
   },
-  backButton: {
-    marginBottom: 10,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
+  backButton: shared.backButton,
+  backButtonText: shared.backButtonText,
   title: {
     color: '#fff',
     fontSize: 28,

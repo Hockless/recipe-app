@@ -42,7 +42,9 @@ const styles = StyleSheet.create({
   },
   header: {
     height: HEADER_HEIGHT,
-    overflow: 'hidden',
+  overflow: 'hidden',
+  alignItems: 'center',
+  justifyContent: 'center',
   },
   content: {
     flex: 1,
