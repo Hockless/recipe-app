@@ -15,6 +15,7 @@ export interface Recipe {
   imageUri?: string;
   dateCreated: string; // ISO string
   tags?: string[]; // e.g., ['Keto','Mediterranean']
+  serves?: number; // optional servings count
 }
 
 function slugify(input: string) {
@@ -42,7 +43,7 @@ export const SEEDED_RECIPES: Recipe[] = [
       { id: 'i-10', name: 'Fresh thyme leaves (optional)', amount: 'to serve' },
     ],
     instructions: 'Heat oil in large non-stick saucepan, gently fry onion 3–5 min until softened and lightly browned, stirring regularly. Add garlic, cook a few seconds. Add barley and bay leaf. Crumble over stock cube, add 900ml cold water, cover loosely, bring to boil. Reduce to gentle simmer, cook 40–50 min until tender, stirring occasionally. Add extra water if barley absorbs more than expected. Add leeks, cook 5 min more until tender, stir in Parmesan, season to taste. Spoon onto plates, crumble goat’s cheese on top, sprinkle with thyme leaves to serve.',
-    dateCreated: '2025-01-13T19:00:00.000Z',
+  dateCreated: '2025-01-13T19:00:00.000Z',
   },
   {
     id: 'seed-roasted-vegetable-pasta-mozzarella',
@@ -59,7 +60,7 @@ export const SEEDED_RECIPES: Recipe[] = [
       { id: 'i-9', name: 'Mozzarella pearls (mini balls)', amount: '125g, drained and halved' },
     ],
     instructions: 'Preheat oven to 200°C/fan 180°C/Gas 6. Place peppers, courgette, onion in large baking tray. Drizzle with oil, season with salt and pepper, toss. Roast 20 min. Add tomatoes, sprinkle with chilli flakes, roast 10 min more. Meanwhile, cook pasta in boiling water 10–12 min until tender, drain. Add spinach, roasted veg, mozzarella to pan, toss, season, stir 1 min until mozzarella melts and spinach wilts.',
-    dateCreated: '2025-01-13T20:00:00.000Z',
+  dateCreated: '2025-01-13T20:00:00.000Z',
   },
   {
     id: 'seed-lamb-saag',
@@ -73,7 +74,7 @@ export const SEEDED_RECIPES: Recipe[] = [
       { id: 'i-6', name: 'Frozen spinach', amount: '200g' },
     ],
     instructions: 'Preheat oven to 180°C/fan 160°C/Gas 4. Heat oil in flame-proof casserole, gently fry onion 5 min until softened. Add lamb, season, cook 3 min until coloured, turning. Stir in curry paste, cook 1 min. Add lentils, spinach, stir in 500ml water. Bring to boil, cover, cook in oven 1–1¼ hours until lamb tender and sauce thick.',
-    dateCreated: '2025-01-13T21:00:00.000Z',
+  dateCreated: '2025-01-13T21:00:00.000Z',
   },
   {
     id: 'seed-courgetti-spaghetti-pine-nuts-spinach-pancetta',
@@ -88,7 +89,7 @@ export const SEEDED_RECIPES: Recipe[] = [
       { id: 'i-7', name: 'Feta', amount: '80g' },
     ],
     instructions: 'Cook spaghetti in boiling water 10–12 min until tender. Add spiralized courgette, stir, drain, rinse under cold tap. Toast pine nuts and lardons in pan with half oil 2–3 min until lightly browned, tip out. Add remaining oil and spinach, cook 1–2 min until soft. Crumble 2/3 feta over, cook until melted. Return spaghetti and courgetti, add spinach and feta sauce, toss over medium heat 1–2 min. Divide between bowls, crumble remaining feta, sprinkle pancetta and pine nuts.',
-    dateCreated: '2025-01-13T22:00:00.000Z',
+  dateCreated: '2025-01-13T22:00:00.000Z',
   },
   {
     id: 'seed-cheats-one-pot-cassoulet',
@@ -106,7 +107,7 @@ export const SEEDED_RECIPES: Recipe[] = [
       { id: 'i-8', name: 'Fresh parsley', amount: 'generous handful, chopped, to serve' },
     ],
     instructions: 'Heat oil in wide-based non-stick saucepan or flame-proof casserole, add sausages, cook 5 min until browned, remove. Add onion and pancetta, cook 3–5 min until golden. Cut sausages in half, return to pan, add beans, tomatoes, herbs. Stir in 150ml water, bring to simmer, cover, cook 18–20 min, stirring. Add extra water if sauce thickens. Season, stir in parsley to serve.',
-    dateCreated: '2025-01-13T23:00:00.000Z',
+  dateCreated: '2025-01-13T23:00:00.000Z',
   },
   {
     id: 'seed-chicken-tikka-masala',
@@ -125,7 +126,7 @@ export const SEEDED_RECIPES: Recipe[] = [
       { id: 'i-11', name: 'Tomato purée', amount: '1 tbsp' },
     ],
     instructions: 'Combine 1 tbsp curry paste, yoghurt, salt in bowl, add chicken, mix, marinate at least 1 hour. For sauce: heat oil in pan, fry onion 5 min, add garlic, ginger, 2 tbsp curry paste, cook 1½ min. Add 300ml water, tomato purée, bring to simmer, cook 5 min, blend smooth. Fry marinated chicken 3 min until browned, add sauce, cook 3–4 min until chicken cooked. Add water if sauce thickens. Serve with coriander and chilli.',
-    dateCreated: '2025-01-14T00:00:00.000Z',
+  dateCreated: '2025-01-14T00:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Thai Pork Lettuce Cups'),
@@ -146,7 +147,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Stir-fry pork with aromatics until cooked, toss with a simple lime–fish sauce dressing, and serve in crisp lettuce cups with herbs.',
-    dateCreated: '2025-01-03T09:00:00.000Z',
+  dateCreated: '2025-01-03T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Pesto Courgetti Spaghetti with Red Pepper and Feta'),
@@ -162,7 +163,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Warm peppers in oil, briefly sauté courgetti, then toss with pesto and feta. Finish with pine nuts and basil. Add cooked spaghetti if you want a larger portion.',
-    dateCreated: '2025-01-04T09:00:00.000Z',
+  dateCreated: '2025-01-04T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Mixed Bean and Miso Salad with Chicken'),
@@ -178,7 +179,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Toss beans, chicken and vegetables with a light miso dressing until evenly coated. Serve as a hearty salad or lunchbox option.',
-    dateCreated: '2025-01-05T09:00:00.000Z',
+  dateCreated: '2025-01-05T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Breakfast Burrito'),
@@ -196,7 +197,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Roast or pan-cook the meats and veg until done. Add egg, then assemble in stacked lettuce leaves with mayo and a touch of sriracha. Roll and serve.',
-    dateCreated: '2025-01-06T09:00:00.000Z',
+  dateCreated: '2025-01-06T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('One Pan Squeezed Sausage Casserole'),
@@ -213,7 +214,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Cut sausages into pieces, brown with onion and squash. Add thyme and greens, finish with vinegar for a hearty one-pan meal.',
-    dateCreated: '2025-01-07T09:00:00.000Z',
+  dateCreated: '2025-01-07T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Chinese Pork Balls in Mushroom Miso Broth'),
@@ -233,7 +234,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Form seasoned pork into balls and bake. Make umami-rich broth with mushrooms, miso and soy. Combine with greens for a satisfying soup.',
-    dateCreated: '2025-01-08T09:00:00.000Z',
+  dateCreated: '2025-01-08T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Chicken Casserole with Chorizo, Thyme and Olives'),
@@ -251,7 +252,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Brown chicken, sauté chorizo and onions, then slow-cook with beans, thyme and whole garlic. Finish with broccoli for a Mediterranean feast.',
-    dateCreated: '2025-01-09T09:00:00.000Z',
+  dateCreated: '2025-01-09T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Piri Piri Roast Chicken with Jalapeño Yoghurt'),
@@ -269,7 +270,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Marinate chicken in piri piri blend, roast with lemon. Serve with cooling jalapeño yoghurt sauce for a spicy-fresh combination.',
-    dateCreated: '2025-01-10T09:00:00.000Z',
+  dateCreated: '2025-01-10T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Keto-fried Chicken'),
@@ -285,7 +286,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Coat chicken in spiced almond mixture, dip in egg, then fry until golden and crispy. A low-carb take on fried chicken.',
-    dateCreated: '2025-01-11T09:00:00.000Z',
+  dateCreated: '2025-01-11T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('White Fish with Herby Green Dressing and Lentils'),
@@ -302,7 +303,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Pan-fry seasoned fish fillets. Blend herbs with anchovies and vinegar for a zesty green dressing. Serve over warm lentils.',
-    dateCreated: '2025-01-12T09:00:00.000Z',
+  dateCreated: '2025-01-12T09:00:00.000Z',
   },
   {
     id: 'seed-' + slugify('Made-in-Minutes Goan Prawn Curry with Spinach'),
@@ -325,7 +326,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Blitz aromatics into a paste, fry briefly, add coconut milk and spinach. Simmer with prawns until just cooked through. Finish with lemon.',
-    dateCreated: '2025-01-13T09:00:00.000Z',
+  dateCreated: '2025-01-13T09:00:00.000Z',
   },
   {
     id: 'seed-easy-chicken-tagine',
@@ -346,7 +347,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Preheat oven to 200°C/fan 180°C/Gas 6. Heat oil in medium flame-proof casserole over medium heat. Add onion and chicken, gently fry 6-8 minutes until onion lightly browned. Sprinkle with spices, cook few seconds more. Add pepper, tomatoes, chickpeas, apricots and crumbled stock cube. Pour in 250ml water, season and bring to simmer. Cover and cook in oven 45 minutes until chicken tender and sauce thickened. Sprinkle with herbs to serve.',
-    dateCreated: '2025-01-13T10:00:00.000Z',
+  dateCreated: '2025-01-13T10:00:00.000Z',
   },
   {
     id: 'seed-chicken-wrapped-in-parma-ham',
@@ -364,7 +365,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Place chicken on board, cover with cling film and bash with rolling pin to flatten to 2cm thick. Season and wrap each breast in Parma ham. Heat 1 tbsp oil in large non-stick pan, fry wrapped chicken 3-4 minutes each side until lightly browned. Transfer to plate. Add remaining oil to pan with onion, fry 5 minutes, add garlic and cook few seconds. Add tomatoes, oregano, 300ml water and spinach. Bring to simmer, cook 2-3 minutes until spinach soft. Season sauce. Return chicken, nestle into sauce. Simmer gently 18-20 minutes until chicken tender. Sprinkle with Parmesan to serve.',
-    dateCreated: '2025-01-13T11:00:00.000Z',
+  dateCreated: '2025-01-13T11:00:00.000Z',
   },
   {
     id: 'seed-thai-curry-with-prawns',
@@ -382,7 +383,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Heat oil in large non-stick frying pan or wok over medium-high heat and stir-fry pepper 2 minutes. Add spring onions, ginger and curry paste, cook 1 minute more. Pour in coconut milk and bring to gentle simmer. Add mange tout and chilli if using. Return to simmer and cook 2 minutes. Add prawns and heat 1-2 minutes until hot. Add splash of water if sauce thickens too much. Serve with freshly cooked cauliflower rice.',
-    dateCreated: '2025-01-13T12:00:00.000Z',
+  dateCreated: '2025-01-13T12:00:00.000Z',
   },
   {
     id: 'seed-pan-fried-fish-with-lemon-and-parsley',
@@ -396,7 +397,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Season fish on skinless side with sea salt and black pepper. Melt butter with oil in large non-stick frying pan over medium heat. Add plaice skin-side down, cook 3 minutes. Turn over and cook 1-2 minutes more depending on thickness. Lift fish to warmed plate with fish slice. Return pan to heat, add lemon juice and parsley, simmer few seconds stirring constantly. Pour buttery juices over fish to serve.',
-    dateCreated: '2025-01-13T13:00:00.000Z',
+  dateCreated: '2025-01-13T13:00:00.000Z',
   },
   {
     id: 'seed-smoked-haddock-with-lentils',
@@ -415,7 +416,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Heat oil in non-stick frying pan over low heat. Add onion, celery and carrot, gently fry 5 minutes until soft but not browned. Add rosemary and garlic, cook few seconds more. Tip lentils into pan and add stock. Bring to gentle simmer then place fish fillets on top. Season well with black pepper and sprinkle with parsley if using. Cover with lid and cook fish about 8 minutes until just beginning to flake. Divide lentils between plates and top with fish.',
-    dateCreated: '2025-01-13T14:00:00.000Z',
+  dateCreated: '2025-01-13T14:00:00.000Z',
   },
   {
     id: 'seed-chicken-caesar-ish-salad',
@@ -433,7 +434,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Make dressing by combining yoghurt, garlic, herbs, oil and 2 tbsp cold water in bowl. Season with pinch of sea salt and lots of ground black pepper. Wash lettuce and drain well. Divide leaves between two shallow bowls and scatter with tomatoes. Place chicken on top, sprinkle with mixed seeds and Parmesan, drizzle with dressing. Season with ground black pepper and serve.',
-    dateCreated: '2025-01-13T15:00:00.000Z',
+  dateCreated: '2025-01-13T15:00:00.000Z',
   },
   {
     id: 'seed-shakshuka',
@@ -452,7 +453,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Heat oil in medium non-stick frying pan with lid. Add onion and pepper, gently fry 5-6 minutes until softened. Add garlic, cumin and paprika, cook 20-30 seconds. Tip in tomatoes, tomato purée, good pinch sea salt and lots black pepper. Bring to simmer and cook 4 minutes until tomato thickened. Make four holes in vegetable mixture and break egg into each. Cover and cook very gently 3-5 minutes until whites set but yolks remain runny. Sprinkle with herbs if using and season with more black pepper.',
-    dateCreated: '2025-01-13T16:00:00.000Z',
+  dateCreated: '2025-01-13T16:00:00.000Z',
   },
   {
     id: 'seed-french-bean-bowl-with-feta-and-pine-nuts',
@@ -468,7 +469,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Toast pine nuts in dry frying pan over medium heat 1-2 minutes until golden. Remove and set aside. Return pan to heat, add beans and oil, fry 2-3 minutes stirring occasionally. Stir in tomatoes and cook 4 minutes. Add garlic and cook 1 minute more. Remove from heat and scatter feta and pine nuts over. Allow to rest minute or so to let feta soften, then divide between bowls and season with black pepper and chilli flakes if using.',
-    dateCreated: '2025-01-13T17:00:00.000Z',
+  dateCreated: '2025-01-13T17:00:00.000Z',
   },
   {
     id: 'seed-cheesy-fajita-beef-casserole',
@@ -487,7 +488,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions:
       'Preheat oven to 200°C/Fan 180°C/Gas 6. Place wide-based ovenproof casserole over medium heat. Add oil, onion and peppers, sauté 3-4 minutes. Add minced beef and fry about 4 minutes, stirring to break meat into small pieces. Stir in black beans, fajita seasoning, tomatoes and jalapeño peppers. Simmer 3 minutes and season well. Scatter cheese over and bake 20 minutes until cheese browned and bubbling. Serve with yoghurt alongside.',
-    dateCreated: '2025-01-13T18:00:00.000Z',
+  dateCreated: '2025-01-13T18:00:00.000Z',
   },
 ];
 
@@ -521,6 +522,36 @@ const TAG_MAP: Record<string, string[]> = {
   'Cheesy Fajita Beef Casserole': ['Keto'],
 };
 
+// Optional serves patch mapping (title -> serves). Fill this as values are decided.
+const SERVES_MAP: Record<string, number> = {
+  "Leek and Goat's Cheese Barley Risotto": 4,
+  'Roasted Vegetable Pasta with Mozzarella': 2,
+  'Lamb Saag': 4,
+  'Courgetti Spaghetti with Pine Nuts, Spinach and Pancetta': 2,
+  "Cheat's One-pot Cassoulet": 4,
+  'Chicken Tikka Masala': 2,
+  'Easy Chicken Tagine': 2,
+  'Chicken Wrapped in Parma Ham': 4,
+  'Thai Curry with Prawns': 2,
+  'Pan-fried Fish with Lemon and Parsley': 1,
+  'Smoked Haddock with Lentils': 2,
+  'Chicken Caesar-ish Salad': 2,
+  'Shakshuka': 2,
+  'French Bean Bowl with Feta and Pine Nuts': 2,
+  'Cheesy Fajita Beef Casserole': 4,
+  'One Pan Squeezed Sausage Casserole': 2,
+  'Chinese Pork Balls in Mushroom Miso Broth': 2,
+  'Chicken Casserole with Chorizo, Thyme and Olives': 4,
+  'Piri Piri Roast Chicken with Jalapeño Yoghurt': 4,
+  'Keto-fried Chicken': 2,
+  'White Fish with Herby Green Dressing and Lentils': 2,
+  'Made-in-Minutes Goan Prawn Curry with Spinach': 4,
+  'Thai Pork Lettuce Cups': 2,
+  'Pesto Courgetti Spaghetti with Red Pepper and Feta': 2,
+  'Mixed Bean and Miso Salad with Chicken': 2,
+  'Breakfast Burrito': 1,
+};
+
 // Titles of seed recipes that have been intentionally removed from the current seed set
 const REMOVED_SEED_TITLES = ['Simple Tomato Pasta', 'Avocado Toast'];
 
@@ -531,8 +562,13 @@ function applySeedPatches(recipes: Recipe[]): Recipe[] {
     .map((r) => {
       if (TAG_MAP[r.title]) {
         if (!r.tags || TAG_MAP[r.title].some((t) => !(r.tags as string[]).includes(t))) {
-          return { ...r, tags: TAG_MAP[r.title] };
+          r = { ...r, tags: TAG_MAP[r.title] };
         }
+      }
+      // Inject serves value if defined in map and missing/different
+      const serves = SERVES_MAP[r.title];
+      if (typeof serves === 'number' && r.serves !== serves) {
+        r = { ...r, serves };
       }
       return r;
     });

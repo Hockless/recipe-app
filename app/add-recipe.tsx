@@ -30,6 +30,7 @@ interface Recipe {
   instructions?: string;
   imageUri?: string;
   dateCreated: string;
+  serves?: number;
 }
 
 export default function AddRecipeScreen() {
@@ -44,6 +45,7 @@ export default function AddRecipeScreen() {
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [serves, setServes] = useState<string>('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { id: '1', name: '', amount: '', qty: '', unit: 'each' }
   ]);
@@ -69,6 +71,7 @@ export default function AddRecipeScreen() {
         setTitle(recipeData.title);
         setInstructions(recipeData.instructions || '');
         setImageUri(recipeData.imageUri || null);
+  setServes(typeof recipeData.serves === 'number' ? String(recipeData.serves) : '');
         const parsed = (recipeData.ingredients.length > 0 ? recipeData.ingredients : [{ id: '1', name: '', amount: '' }]).map((ing) => {
           const { qty, unit, customUnit } = parseAmount(ing.amount || '');
           return { ...ing, qty, unit, customUnit } as Ingredient;
@@ -202,6 +205,7 @@ export default function AddRecipeScreen() {
             ingredients: filledIngredients.map((i: Ingredient) => ({ id: i.id, name: i.name, amount: i.amount })),
             instructions: instructions.trim(),
             imageUri: imageUri || undefined,
+            serves: serves ? Number(serves) : undefined,
           };
         }
       } else {
@@ -211,7 +215,8 @@ export default function AddRecipeScreen() {
           ingredients: filledIngredients.map((i: Ingredient) => ({ id: i.id, name: i.name, amount: i.amount })),
           instructions: instructions.trim(),
           imageUri: imageUri || undefined,
-          dateCreated: new Date().toISOString()
+          dateCreated: new Date().toISOString(),
+          serves: serves ? Number(serves) : undefined,
         };
         recipes.push(recipe);
       }
@@ -342,6 +347,19 @@ export default function AddRecipeScreen() {
                 </ThemedView>
               ) : (
                 <ThemedView style={styles.placeholderContainer}>
+
+            {/* Servings */}
+            <ThemedView style={styles.section}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Serves</ThemedText>
+              <TextInput
+                style={[styles.titleInput, { maxWidth: 140 }]}
+                placeholder="e.g., 2 or 4"
+                keyboardType="number-pad"
+                value={serves}
+                onChangeText={(t) => setServes(t.replace(/[^0-9]/g, ''))}
+                placeholderTextColor="#999"
+              />
+            </ThemedView>
                   <ThemedText style={styles.placeholderText}>No photo added yet</ThemedText>
                   <ThemedText style={styles.placeholderSubtext}>Tap &quot;Add Photo&quot; to upload an image</ThemedText>
                 </ThemedView>

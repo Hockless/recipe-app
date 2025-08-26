@@ -22,6 +22,7 @@ interface Recipe {
   imageUri?: string;
   dateCreated: string;
   tags?: string[];
+  serves?: number;
 }
 
 export default function BrowseRecipesScreen() {
@@ -260,6 +261,11 @@ export default function BrowseRecipesScreen() {
               <ThemedText style={styles.recipeDate}>
                 Created: {formatDate(recipe.dateCreated)}
               </ThemedText>
+              {!!recipe.serves && (
+                <ThemedText style={styles.servesText}>
+                  Serves: {recipe.serves}
+                </ThemedText>
+              )}
               
               <ThemedText style={styles.ingredientsLabel}>
                 Ingredients ({recipe.ingredients.length}):
@@ -312,6 +318,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 5,
+  },
+  servesText: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 8,
   },
   subtitle: {
     color: '#fff',

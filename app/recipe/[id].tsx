@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
 
 interface Ingredient { id: string; name: string; amount: string; }
-interface Recipe { id: string; title: string; ingredients: Ingredient[]; instructions?: string; imageUri?: string; dateCreated: string; tags?: string[]; }
+interface Recipe { id: string; title: string; ingredients: Ingredient[]; instructions?: string; imageUri?: string; dateCreated: string; tags?: string[]; serves?: number }
 
 export default function ViewRecipeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -53,6 +53,12 @@ export default function ViewRecipeScreen() {
         )}
       </ThemedView>
 
+      {!!recipe.serves && (
+        <ThemedView style={styles.metaRow}>
+          <ThemedText style={styles.metaText}>Serves: {recipe.serves}</ThemedText>
+        </ThemedView>
+      )}
+
       {recipe.imageUri && (
         <Image source={{ uri: recipe.imageUri }} style={styles.image} />
       )}
@@ -96,6 +102,8 @@ const styles = StyleSheet.create({
   builtInBadgeText: { fontSize: 10, color: '#374151', fontWeight: '700', letterSpacing: 0.2 },
   image: { width: '100%', height: 240, resizeMode: 'cover' },
   section: { paddingHorizontal: 20, paddingVertical: 16 },
+  metaRow: { paddingHorizontal: 20, paddingTop: 10 },
+  metaText: { fontSize: 13, color: '#555' },
   sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 10, color: '#333' },
   ingredientItem: { fontSize: 15, color: '#444', marginBottom: 6 },
   instructions: { fontSize: 15, color: '#444', lineHeight: 22 },

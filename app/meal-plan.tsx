@@ -22,12 +22,14 @@ interface Recipe {
   instructions?: string;
   imageUri?: string;
   dateCreated: string;
+  serves?: number;
 }
 
 interface MealPlan {
   date: string;
   recipeId: string;
   recipeTitle: string;
+  serves?: number; // target serves for this meal (2 or 4). Default 4.
 }
 
 // New: Two-person rota types
@@ -44,6 +46,7 @@ export default function WeeklyTimelineScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [selectedServes, setSelectedServes] = useState<2 | 4>(4);
   // New: rota state
   const [rotaPaused, setRotaPaused] = useState<RotaPausedMap>({});
   const [rotaWeekStartMap, setRotaWeekStartMap] = useState<RotaWeekStartMap>({});
@@ -101,18 +104,25 @@ export default function WeeklyTimelineScreen() {
       // Load meal plan
       const storedMealPlan = await AsyncStorage.getItem('mealPlan');
       if (storedMealPlan) {
-        const parsedMealPlan = JSON.parse(storedMealPlan);
+        const parsedMealPlan = JSON.parse(storedMealPlan) as MealPlan[];
         
         // Clean up meal plan - remove entries for recipes that no longer exist
         const validRecipeIds = new Set(parsedRecipes.map((recipe: Recipe) => recipe.id));
-        const cleanedMealPlan = parsedMealPlan.filter((meal: MealPlan) => 
-          validRecipeIds.has(meal.recipeId)
-        );
+        let cleanedMealPlan = parsedMealPlan.filter((meal: MealPlan) => validRecipeIds.has(meal.recipeId));
         
-        // If we removed any orphaned entries, save the cleaned meal plan
-        if (cleanedMealPlan.length !== parsedMealPlan.length) {
+        // Migration: ensure serves exists (default 4)
+        let mutated = false;
+        cleanedMealPlan = cleanedMealPlan.map((m) => {
+          if (typeof m.serves !== 'number') { mutated = true; return { ...m, serves: 4 as const }; }
+          return m;
+        });
+        
+        // If we removed any orphaned entries or mutated serves, save the cleaned meal plan
+        if (cleanedMealPlan.length !== parsedMealPlan.length || mutated) {
           await AsyncStorage.setItem('mealPlan', JSON.stringify(cleanedMealPlan));
-          console.log(`Cleaned up meal plan: removed ${parsedMealPlan.length - cleanedMealPlan.length} orphaned entries`);
+          if (cleanedMealPlan.length !== parsedMealPlan.length) {
+            console.log(`Cleaned up meal plan: removed ${parsedMealPlan.length - cleanedMealPlan.length} orphaned entries`);
+          }
         }
         
         setMealPlan(cleanedMealPlan);
@@ -178,12 +188,14 @@ export default function WeeklyTimelineScreen() {
     newMealPlan.push({
       date: selectedDate,
       recipeId,
-      recipeTitle
+      recipeTitle,
+      serves: selectedServes || 4
     });
 
     await saveMealPlan(newMealPlan);
     setShowRecipeModal(false);
     setSelectedDate(null);
+    setSelectedServes(4);
   };
 
   const removeRecipeFromDay = async (date: string) => {
@@ -215,6 +227,17 @@ export default function WeeklyTimelineScreen() {
     );
   };
 
+  // Update serves for a specific day (2 or 4)
+  const updateMealServes = async (dateStr: string, newServes: 2 | 4) => {
+    try {
+      const updated = mealPlan.map(m => m.date === dateStr ? { ...m, serves: newServes } : m);
+      await saveMealPlan(updated);
+    } catch (e) {
+      console.error('Failed to update serves:', e);
+      Alert.alert('Error', 'Could not update serves for this meal.');
+    }
+  };
+
   const getRecipeForDate = (date: string) => {
     return mealPlan.find(meal => meal.date === date);
   };
@@ -233,9 +256,12 @@ export default function WeeklyTimelineScreen() {
           for (const ing of recipe.ingredients) {
             const { qty, unit } = parseAmount(ing.amount);
             if (qty && unit) {
+              const baseServes = typeof recipe.serves === 'number' ? recipe.serves : 4;
+              const targetServes = typeof meal.serves === 'number' ? meal.serves : 4;
+              const factor = baseServes > 0 ? (targetServes / baseServes) : 1;
               const idx = updated.findIndex(p => p.name.toLowerCase() === ing.name.toLowerCase() && p.unit === unit);
               if (idx >= 0) {
-                updated[idx].quantity = Math.max(0, +(updated[idx].quantity - qty).toFixed(3));
+                updated[idx].quantity = Math.max(0, +(updated[idx].quantity - qty * factor).toFixed(3));
                 updated[idx].updatedAt = new Date().toISOString();
               }
             }
@@ -310,12 +336,13 @@ export default function WeeklyTimelineScreen() {
       try {
         const weekDays = getWeekDays();
         const shuffled = [...recipes].sort(() => 0.5 - Math.random());
-        const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
+    const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
           const recipe = shuffled[index % shuffled.length];
           return {
             date: formatDate(day),
             recipeId: recipe.id,
-            recipeTitle: recipe.title,
+      recipeTitle: recipe.title,
+      serves: 4,
           };
         });
         await saveMealPlan(newMealPlan);
@@ -339,12 +366,13 @@ export default function WeeklyTimelineScreen() {
               const weekDays = getWeekDays();
               const shuffled = [...recipes].sort(() => 0.5 - Math.random());
               
-              const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
+        const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
                 const recipe = shuffled[index % shuffled.length];
                 return {
                   date: formatDate(day),
                   recipeId: recipe.id,
-                  recipeTitle: recipe.title
+          recipeTitle: recipe.title,
+          serves: 4,
                 };
               });
 
@@ -540,6 +568,22 @@ export default function WeeklyTimelineScreen() {
                       {cook && (
                         <ThemedText style={styles.cookText}>👩‍🍳 Cook: {cook}</ThemedText>
                       )}
+                      {/* In-card serves toggle */}
+                      <ThemedView style={[styles.servesButtons, { marginBottom: 6 }]}>
+                        <ThemedText style={[styles.cookText, { marginRight: 8 }]}>Serves:</ThemedText>
+                        <TouchableOpacity 
+                          style={[styles.servesBtn, (assignedRecipe?.serves ?? 4) === 2 && styles.servesBtnActive]}
+                          onPress={() => updateMealServes(dateString, 2)}
+                        >
+                          <ThemedText style={[styles.servesBtnText, (assignedRecipe?.serves ?? 4) === 2 && styles.servesBtnTextActive]}>2</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.servesBtn, (assignedRecipe?.serves ?? 4) === 4 && styles.servesBtnActive]}
+                          onPress={() => updateMealServes(dateString, 4)}
+                        >
+                          <ThemedText style={[styles.servesBtnText, (assignedRecipe?.serves ?? 4) === 4 && styles.servesBtnTextActive]}>4</ThemedText>
+                        </TouchableOpacity>
+                      </ThemedView>
                       <TouchableOpacity onPress={() => markCooked(dateString)} style={[styles.cookBtn, cooked && styles.cookBtnDone]}>
                         <ThemedText style={styles.cookBtnText}>{cooked ? 'Cooked ✓' : 'Mark Cooked'}</ThemedText>
                       </TouchableOpacity>
@@ -591,6 +635,25 @@ export default function WeeklyTimelineScreen() {
             </TouchableOpacity>
           </ThemedView>
 
+          {/* Serves selector */}
+          <ThemedView style={styles.servesSelector}>
+            <ThemedText style={styles.servesLabel}>Serves:</ThemedText>
+            <ThemedView style={styles.servesButtons}>
+              <TouchableOpacity 
+                style={[styles.servesBtn, selectedServes === 2 && styles.servesBtnActive]}
+                onPress={() => setSelectedServes(2)}
+              >
+                <ThemedText style={[styles.servesBtnText, selectedServes === 2 && styles.servesBtnTextActive]}>2</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.servesBtn, selectedServes === 4 && styles.servesBtnActive]}
+                onPress={() => setSelectedServes(4)}
+              >
+                <ThemedText style={[styles.servesBtnText, selectedServes === 4 && styles.servesBtnTextActive]}>4</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+          </ThemedView>
+
           <ScrollView style={styles.recipeList}>
             {recipes.map((recipe) => (
               <TouchableOpacity
@@ -600,7 +663,7 @@ export default function WeeklyTimelineScreen() {
               >
                 <ThemedText style={styles.recipeOptionTitle}>{recipe.title}</ThemedText>
                 <ThemedText style={styles.recipeOptionDetails}>
-                  {recipe.ingredients.length} ingredients
+                  {recipe.ingredients.length} ingredients{typeof recipe.serves === 'number' ? ` • base serves ${recipe.serves}` : ''}
                 </ThemedText>
               </TouchableOpacity>
             ))}
@@ -916,5 +979,43 @@ const styles = StyleSheet.create({
   recipeOptionDetails: {
     fontSize: 14,
     color: '#666',
+  },
+  // Serves selector styles
+  servesSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  servesLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  servesButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  servesBtn: {
+    backgroundColor: '#eee',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    minWidth: 46,
+    alignItems: 'center',
+  },
+  servesBtnActive: {
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF6B6B',
+  },
+  servesBtnText: {
+    color: '#333',
+    fontWeight: '700',
+  },
+  servesBtnTextActive: {
+    color: '#fff',
   },
 });

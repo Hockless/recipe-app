@@ -24,12 +24,14 @@ interface Recipe {
   instructions?: string;
   imageUri?: string;
   dateCreated: string;
+  serves?: number;
 }
 
 interface MealPlan {
   date: string;
   recipeId: string;
   recipeTitle: string;
+  serves?: number;
 }
 
 interface ShoppingItem {
@@ -227,7 +229,7 @@ export default function ShoppingListScreen() {
     if (recipes.length > 0 && mealPlan.length > 0) {
       const futureMeals = mealPlan.filter(meal => meal.date >= today);
       
-      futureMeals.forEach(meal => {
+  futureMeals.forEach(meal => {
         const recipe = recipes.find(r => r.id === meal.recipeId);
         if (recipe) {
           recipe.ingredients.forEach(ingredient => {
@@ -240,9 +242,12 @@ export default function ShoppingListScreen() {
             
             const { qty, unit } = parseAmount(ingredient.amount);
             if (qty && unit) {
+      const baseServes = typeof recipe.serves === 'number' ? recipe.serves : 4;
+      const targetServes = typeof meal.serves === 'number' ? meal.serves : 4;
+      const factor = baseServes > 0 ? (targetServes / baseServes) : 1;
               const key = canonicalName.toLowerCase() + '::' + unit;
-              const cur = requiredAgg.get(key) || { name: canonicalName, unit, qty: 0 };
-              cur.qty += qty;
+      const cur = requiredAgg.get(key) || { name: canonicalName, unit, qty: 0 };
+      cur.qty += qty * factor;
               requiredAgg.set(key, cur);
             } else {
               if (ingredientMap[canonicalName]) {
