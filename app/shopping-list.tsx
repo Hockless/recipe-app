@@ -3,7 +3,7 @@ import { shared } from '@/styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { INGREDIENT_DATABASE } from '@/components/IngredientSearch';
 import { ThemedText } from '@/components/ThemedText';
@@ -918,7 +918,8 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   content: {
-    padding: 20,
+    paddingVertical: 20,
+    paddingHorizontal: Platform.OS === 'android' ? 12 : 20,
   },
   weekInfo: {
     backgroundColor: '#f0f8ff',

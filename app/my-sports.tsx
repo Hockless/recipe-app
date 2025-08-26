@@ -1,36 +1,70 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
 import { Collapsible } from '@/components/Collapsible';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { formatLocalTime, getCS2UpcomingMatches, getLeedsFixtures, type NormalEvent } from '@/utils/sports';
+import { formatLocalTime, getCS2UpcomingMatches, getLeedsFixtures, getPremierLeagueNextFixtures, getPremierLeagueTeamFixtures, getUFCNextEventsDetailed, type NormalEvent } from '@/utils/sports';
 
 export default function MySportsScreen() {
   const [leeds, setLeeds] = useState<NormalEvent[] | null>(null);
   // focusing on Leeds for now
   const [cs2, setCS2] = useState<NormalEvent[] | null>(null);
+  const [pl, setPL] = useState<NormalEvent[] | null>(null);
+  const [plTeam, setPLTeam] = useState<NormalEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ufc, setUFC] = useState<{ id: string; title: string; iso?: string | null; fights: string[] }[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Load Leeds + CS2 and do not fail the entire page if one source fails
       try {
-        const [l, c] = await Promise.all([
+        const [lRes, cRes, uRes] = await Promise.allSettled([
           getLeedsFixtures(8),
           getCS2UpcomingMatches(6, 'FaZe'),
+          getUFCNextEventsDetailed(5),
         ]);
-        console.log('[MySports] Leeds fixtures:', l);
-        console.log('[MySports] CS2 matches (FaZe filter):', c);
         if (!cancelled) {
-          setLeeds(l);
-          setCS2(c);
+          if (lRes.status === 'fulfilled') {
+            setLeeds(lRes.value);
+            setError(null);
+          } else {
+            setLeeds([]);
+            setError(lRes.reason?.message || 'Failed to load Leeds fixtures');
+          }
+          if (cRes.status === 'fulfilled') setCS2(cRes.value); else setCS2([]);
+          if (uRes.status === 'fulfilled') setUFC(uRes.value); else setUFC([]);
         }
-      } catch (e: any) {
-  console.error('[MySports] Failed to load sports data:', e);
-        if (!cancelled) setError(e?.message || 'Failed to load sports data');
+      } catch (e) {
+        // ignore top-level; we handle per-promise
+      }
+
+      // FPL is blocked by CORS on web; only attempt on native
+      if (Platform.OS !== 'web') {
+        try {
+          const [leagueRes, teamRes] = await Promise.allSettled([
+            getPremierLeagueNextFixtures(8),
+            getPremierLeagueTeamFixtures('Leeds United', 6),
+          ]);
+          if (!cancelled) {
+            setPL(leagueRes.status === 'fulfilled' ? leagueRes.value : []);
+            setPLTeam(teamRes.status === 'fulfilled' ? teamRes.value : []);
+          }
+        } catch {
+          if (!cancelled) {
+            setPL([]);
+            setPLTeam([]);
+          }
+        }
+      } else {
+        // On web, explicitly show unavailable state
+        if (!cancelled) {
+          setPL([]);
+          setPLTeam([]);
+        }
       }
     })();
     return () => {
@@ -79,6 +113,50 @@ export default function MySportsScreen() {
         )}
       </Collapsible>
 
+      <Collapsible title="Premier League – next fixtures (via FPL free API)">
+        {Platform.OS === 'web' ? (
+          <ThemedText>
+            Not available on web due to CORS. View on Android/iOS device.
+          </ThemedText>
+        ) : pl === null ? (
+          <Loading />
+        ) : pl.length === 0 ? (
+          <ThemedText>No upcoming fixtures found.</ThemedText>
+        ) : (
+          pl.map((e) => (
+            <ThemedView key={e.id} style={styles.row}>
+              <ThemedText style={styles.eventTitle}>{e.title}</ThemedText>
+              <ThemedText style={styles.timeText}>{formatLocalTime(e)}</ThemedText>
+              {e.competition && (
+                <ThemedText style={styles.compText}>{e.competition}</ThemedText>
+              )}
+            </ThemedView>
+          ))
+        )}
+      </Collapsible>
+
+      <Collapsible title="Premier League – Leeds United (FPL)">
+        {Platform.OS === 'web' ? (
+          <ThemedText>
+            Not available on web due to CORS. View on Android/iOS device.
+          </ThemedText>
+        ) : plTeam === null ? (
+          <Loading />
+        ) : plTeam.length === 0 ? (
+          <ThemedText>No upcoming fixtures found.</ThemedText>
+        ) : (
+          plTeam.map((e) => (
+            <ThemedView key={e.id} style={styles.row}>
+              <ThemedText style={styles.eventTitle}>{e.title}</ThemedText>
+              <ThemedText style={styles.timeText}>{formatLocalTime(e)}</ThemedText>
+              {e.competition && (
+                <ThemedText style={styles.compText}>{e.competition}</ThemedText>
+              )}
+            </ThemedView>
+          ))
+        )}
+      </Collapsible>
+
       <Collapsible title="CS2 – Upcoming (via RapidAPI)">
         {cs2 === null ? (
           <Loading />
@@ -93,6 +171,30 @@ export default function MySportsScreen() {
               <ThemedText style={styles.timeText}>{formatLocalTime(e)}</ThemedText>
               {e.competition && (
                 <ThemedText style={styles.compText}>{e.competition}</ThemedText>
+              )}
+            </ThemedView>
+          ))
+        )}
+      </Collapsible>
+
+      <Collapsible title="UFC – Upcoming fight cards">
+        {ufc === null ? (
+          <Loading />
+        ) : ufc.length === 0 ? (
+          <ThemedText>No upcoming UFC events found.</ThemedText>
+        ) : (
+          ufc.map((ev) => (
+            <ThemedView key={ev.id} style={styles.ufcEvent}>
+              <ThemedText style={styles.eventTitle}>{ev.title}</ThemedText>
+              {ev.iso && <ThemedText style={styles.timeText}>{new Date(ev.iso).toLocaleString()}</ThemedText>}
+              {ev.fights.length > 0 ? (
+                <View style={styles.fightList}>
+                  {ev.fights.map((f, i) => (
+                    <ThemedText key={`${ev.id}-f-${i}`} style={styles.fightLine}>• {f}</ThemedText>
+                  ))}
+                </View>
+              ) : (
+                <ThemedText style={styles.compText}>Fight card TBA</ThemedText>
               )}
             </ThemedView>
           ))
@@ -131,4 +233,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 8,
   },
+  ufcEvent: {
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  fightList: { marginTop: 6, paddingLeft: 10 },
+  fightLine: { fontSize: 14, lineHeight: 20 },
 });

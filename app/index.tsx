@@ -12,6 +12,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const [recipeCount, setRecipeCount] = useState<number | null>(null);
   const [receiptCount, setReceiptCount] = useState<number | null>(null);
+  // Feature flags
+  const SHOW_CALENDAR = false; // toggle on when ready to display the calendar card again
 
   useEffect(() => {
     const loadCounts = async () => {
@@ -136,6 +138,19 @@ export default function HomeScreen() {
           </ThemedView>
         </TouchableOpacity>
 
+        {/* Notes Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/notes' as any)}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>🗒️</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <ThemedText type="defaultSemiBold">Notes</ThemedText>
+            <ThemedText style={styles.actionDescription}>Scratchpad that autosaves</ThemedText>
+          </ThemedView>
+        </TouchableOpacity>
+
         {/* Commute Planner Card */}
         <TouchableOpacity
           style={styles.actionButton}
@@ -149,18 +164,20 @@ export default function HomeScreen() {
           </ThemedView>
         </TouchableOpacity>
 
-        {/* Personal Calendar Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/personal-calendar')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>🗓️</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Personal Calendar</ThemedText>
-            <ThemedText style={styles.actionDescription}>Simple events & notes</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
+        {/* Personal Calendar Card (hidden via flag, logic kept) */}
+        {SHOW_CALENDAR && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/personal-calendar')}
+            activeOpacity={0.85}
+          >
+            <ThemedText style={styles.actionEmoji}>🗓️</ThemedText>
+            <ThemedView style={styles.actionTextContainer}>
+              <ThemedText type="defaultSemiBold">Personal Calendar</ThemedText>
+              <ThemedText style={styles.actionDescription}>Simple events & notes</ThemedText>
+            </ThemedView>
+          </TouchableOpacity>
+        )}
 
         {/* My Sports Card */}
         <TouchableOpacity

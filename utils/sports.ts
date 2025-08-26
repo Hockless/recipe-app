@@ -15,6 +15,7 @@ const AF_BASE = (process.env.EXPO_PUBLIC_API_FOOTBALL_BASE as string) || 'https:
 const AF_KEY = process.env.EXPO_PUBLIC_API_FOOTBALL_KEY as string | undefined;
 const RAPID_KEY = process.env.EXPO_PUBLIC_RAPIDAPI_KEY as string | undefined;
 const CS2_HOST = (process.env.EXPO_PUBLIC_CS2_HOST as string) || 'csgo-matches-and-tournaments.p.rapidapi.com';
+const FPL_BASE = 'https://fantasy.premierleague.com/api'; // Free, no key
 
 async function fetchJson<T>(url: string): Promise<T> {
   const ctrl = new AbortController();
@@ -45,6 +46,20 @@ async function fetchAF<T>(path: string, params: Record<string, string | number |
       },
     });
     if (!res.ok) throw new Error(`AF HTTP ${res.status}`);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Fantasy Premier League (FPL) – free Premier League fixtures
+async function fetchFPL<T>(path: string): Promise<T> {
+  const url = `${FPL_BASE}${path}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`FPL HTTP ${res.status}`);
     return (await res.json()) as T;
   } finally {
     clearTimeout(t);
@@ -212,6 +227,66 @@ export async function getUFCNextEvents(limit = 5): Promise<NormalEvent[]> {
   return normalizeEvents(next.events).slice(0, limit);
 }
 
+// UFC with fight card details (parsed from strFightCard when available)
+export async function getUFCNextEventsDetailed(limit = 5): Promise<Array<NormalEvent & { fights: string[] }>> {
+  // Identify UFC league as in getUFCNextEvents
+  const leagues = await fetchJson<{ leagues?: any[] }>(
+    `${BASE}/search_all_leagues.php?s=${encodeURIComponent('Mixed Martial Arts')}`
+  );
+  const ufc = (leagues.leagues || []).find(
+    (l) => /ultimate fighting championship|\bUFC\b/i.test(l.strLeague || '')
+  );
+  if (!ufc?.idLeague) return [];
+
+  const next = await fetchJson<{ events?: any[] }>(
+    `${BASE}/eventsnextleague.php?id=${encodeURIComponent(ufc.idLeague)}`
+  );
+  const events = (next.events || []).slice(0, limit);
+
+  const detailed = await Promise.allSettled(
+    events.map(async (ev: any) => {
+      const id = ev.idEvent || ev.id;
+      let fights: string[] = [];
+      try {
+        const detail = await fetchJson<{ events?: any[] }>(
+          `${BASE}/lookupevent.php?id=${encodeURIComponent(id)}`
+        );
+        const d = (detail.events || [])[0] || {};
+        const card = d.strFightCard || d.strCard || '';
+        if (card) {
+          fights = String(card)
+            .split(/\r?\n|;|\|/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .slice(0, 20);
+        }
+      } catch {
+        fights = [];
+      }
+      const norm: NormalEvent = {
+        id: String(id ?? Math.random()),
+        title: ev.strEvent || dTitle(ev) || 'UFC Event',
+        iso: ev.strTimestamp || ev.dateEvent || null,
+        date: ev.dateEvent || null,
+        time: ev.strTime || null,
+        competition: ev.strLeague || 'UFC',
+      };
+      return { ...norm, fights };
+    })
+  );
+
+  return detailed
+    .filter((r) => r.status === 'fulfilled')
+    .map((r: any) => r.value);
+
+  function dTitle(e: any): string | null {
+    const home = e.strHomeTeam || '';
+    const away = e.strAwayTeam || '';
+    if (home || away) return `${home} vs ${away}`.trim();
+    return e.strFilename || null;
+  }
+}
+
 // FaZe Clan Counter-Strike: try to get CS events via TheSportsDB team search
 export async function getFaZeCSMatches(limit = 5): Promise<NormalEvent[]> {
   // Attempt 1: search exact CS team name variants
@@ -262,4 +337,66 @@ export function formatLocalTime(e: NormalEvent): string {
   if (e.date && e.time) return `${e.date} ${e.time}`;
   if (e.date) return e.date;
   return 'TBA';
+}
+
+// Premier League fixtures via FPL
+type FPLTeam = { id: number; name: string; short_name: string };
+type FPLFixture = {
+  id: number;
+  event: number | null; // gameweek
+  kickoff_time: string | null; // ISO
+  team_h: number;
+  team_a: number;
+};
+
+// Get upcoming Premier League fixtures (league-wide)
+export async function getPremierLeagueNextFixtures(limit = 10): Promise<NormalEvent[]> {
+  // Load teams to map ids -> names
+  const bootstrap = await fetchFPL<{ teams: FPLTeam[] }>('/bootstrap-static/');
+  const teams = new Map<number, FPLTeam>(bootstrap.teams.map((t) => [t.id, t]));
+  // Get all fixtures; filter to future ones by kickoff_time
+  const fixtures = await fetchFPL<FPLFixture[]>('/fixtures/');
+  const now = Date.now();
+  const upcoming = fixtures
+    .filter((f) => f.kickoff_time && new Date(f.kickoff_time).getTime() >= now)
+    .sort((a, b) => new Date(a.kickoff_time || 0).getTime() - new Date(b.kickoff_time || 0).getTime())
+    .slice(0, limit);
+
+  return upcoming.map((f) => {
+    const home = teams.get(f.team_h)?.name || `Team ${f.team_h}`;
+    const away = teams.get(f.team_a)?.name || `Team ${f.team_a}`;
+    return {
+      id: String(f.id),
+      title: `${home} vs ${away}`,
+      iso: f.kickoff_time,
+      competition: f.event ? `Premier League GW ${f.event}` : 'Premier League',
+    } satisfies NormalEvent;
+  });
+}
+
+// Get upcoming fixtures for a specific PL team by (partial) name
+export async function getPremierLeagueTeamFixtures(teamName: string, limit = 5): Promise<NormalEvent[]> {
+  const bootstrap = await fetchFPL<{ teams: FPLTeam[] }>('/bootstrap-static/');
+  const team = bootstrap.teams.find((t) =>
+    `${t.name} ${t.short_name}`.toLowerCase().includes(teamName.toLowerCase())
+  );
+  if (!team) return [];
+  const fixtures = await fetchFPL<FPLFixture[]>('/fixtures/');
+  const now = Date.now();
+  const upcoming = fixtures
+    .filter(
+      (f) => (f.team_h === team.id || f.team_a === team.id) && f.kickoff_time && new Date(f.kickoff_time).getTime() >= now
+    )
+    .sort((a, b) => new Date(a.kickoff_time || 0).getTime() - new Date(b.kickoff_time || 0).getTime())
+    .slice(0, limit);
+  return upcoming.map((f) => {
+    const home = bootstrap.teams.find((t) => t.id === f.team_h)?.name || `Team ${f.team_h}`;
+    const away = bootstrap.teams.find((t) => t.id === f.team_a)?.name || `Team ${f.team_a}`;
+    return {
+      id: String(f.id),
+      title: `${home} vs ${away}`,
+      iso: f.kickoff_time,
+      competition: f.event ? `Premier League GW ${f.event}` : 'Premier League',
+    } satisfies NormalEvent;
+  });
 }

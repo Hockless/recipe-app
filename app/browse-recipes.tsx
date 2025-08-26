@@ -345,7 +345,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   content: {
-    padding: 20,
+    paddingVertical: 20,
+    paddingHorizontal: Platform.OS === 'android' ? 12 : 20,
   },
   filterBar: {
     flexDirection: 'row',
