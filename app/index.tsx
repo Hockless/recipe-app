@@ -161,6 +161,19 @@ export default function HomeScreen() {
             <ThemedText style={styles.actionDescription}>Simple events & notes</ThemedText>
           </ThemedView>
         </TouchableOpacity>
+
+        {/* My Sports Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/my-sports')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>⚽</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <ThemedText type="defaultSemiBold">My Sports</ThemedText>
+            <ThemedText style={styles.actionDescription}>Teams, fixtures & results</ThemedText>
+          </ThemedView>
+        </TouchableOpacity>
       </ThemedView>
     </ParallaxScrollView>
   );

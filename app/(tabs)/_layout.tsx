@@ -41,6 +41,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+      />
+      {/* Hide legacy my-sports tab route if present */}
+      <Tabs.Screen
+        name="my-sports"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

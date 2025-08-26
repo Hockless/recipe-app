@@ -217,7 +217,6 @@ export default function CommutePlannerScreen() {
       <ThemedView style={styles.section}>
         <BackButton textStyle={{ color: '#0f172a' }} />
         <ThemedText type="title" style={styles.title}>Commute Planner</ThemedText>
-        <ThemedText style={styles.subtitle}>Select a morning train; we calculate the rest.</ThemedText>
       </ThemedView>
 
       {/* Horizontal train picker at top */}
