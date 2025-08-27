@@ -1,4 +1,5 @@
 import { ensureSeeded } from '@/utils/seed';
+import { initDailyClothingNotifications } from '@/utils/weatherNotifier';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -15,6 +16,8 @@ export default function RootLayout() {
   useEffect(() => {
     // Bump this number when adding new built-in recipes
     void ensureSeeded(5);
+  // Set up daily 7am clothing guide
+  void initDailyClothingNotifications();
   }, []);
 
   if (!loaded) {
@@ -38,6 +41,7 @@ export default function RootLayout() {
   <Stack.Screen name="bin-reminders" options={{ headerShown: false }} />
   <Stack.Screen name="commute-planner" options={{ headerShown: false }} />
   <Stack.Screen name="my-sports" options={{ headerShown: false }} />
+  <Stack.Screen name="weather" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

@@ -164,6 +164,19 @@ export default function HomeScreen() {
           </ThemedView>
         </TouchableOpacity>
 
+        {/* Weather Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/weather')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>🌦️</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <ThemedText type="defaultSemiBold">Weather</ThemedText>
+            <ThemedText style={styles.actionDescription}>Guiseley ↔ Leeds today</ThemedText>
+          </ThemedView>
+        </TouchableOpacity>
+
         {/* Personal Calendar Card (hidden via flag, logic kept) */}
         {SHOW_CALENDAR && (
           <TouchableOpacity
