@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Clipboard from 'expo-clipboard';
+// Clipboard is imported dynamically where used to avoid runtime crashes if the native module is unavailable
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
@@ -345,16 +345,20 @@ export default function NotesScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity onPress={async () => {
                   try {
-                    await Clipboard.setStringAsync(JSON.stringify({ type: 'notes-export-v1', notes }));
+                    const mod = await import('expo-clipboard');
+                    await mod.setStringAsync(JSON.stringify({ type: 'notes-export-v1', notes }));
                     setStatus('saved');
                     setTimeout(() => setStatus('idle'), 800);
-                  } catch {}
+                  } catch (e) {
+                    Alert.alert('Clipboard unavailable', 'Clipboard functions are not available in this build. Please rebuild the app or copy manually.');
+                  }
                 }} style={styles.secondaryButton}>
                   <ThemedText style={styles.secondaryButtonText}>Export</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={async () => {
                   try {
-                    const text = await Clipboard.getStringAsync();
+                    const mod = await import('expo-clipboard');
+                    const text = await mod.getStringAsync();
                     const parsed = JSON.parse(text);
                     if (parsed?.type === 'notes-export-v1' && Array.isArray(parsed.notes)) {
                       const merged = mergeNotes(notes, parsed.notes as Note[]);
@@ -363,8 +367,8 @@ export default function NotesScreen() {
                     } else {
                       Alert.alert('Invalid import', 'Clipboard does not contain a valid notes export.');
                     }
-                  } catch {
-                    Alert.alert('Import failed', 'Could not read notes from clipboard.');
+                  } catch (e) {
+                    Alert.alert('Clipboard unavailable', 'Clipboard functions are not available in this build. Please rebuild the app or paste manually.');
                   }
                 }} style={styles.secondaryButton}>
                   <ThemedText style={styles.secondaryButtonText}>Import</ThemedText>

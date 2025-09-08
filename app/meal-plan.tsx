@@ -2,9 +2,10 @@ import { BackButton } from '@/components/BackButton';
 import { shared } from '@/styles/theme';
 import { loadPantry, PantryItem, parseAmount, savePantry } from '@/utils/pantry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Alert, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Modal, PanResponder, Platform, ScrollView, StyleSheet, ToastAndroid, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -23,6 +24,7 @@ interface Recipe {
   imageUri?: string;
   dateCreated: string;
   serves?: number;
+  tags?: string[]; // e.g., ['Keto','Mediterranean']
 }
 
 interface MealPlan {
@@ -47,11 +49,15 @@ export default function WeeklyTimelineScreen() {
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedServes, setSelectedServes] = useState<2 | 4>(4);
+  // Tag filter for recipe picker
+  const [activeTagFilter, setActiveTagFilter] = useState<string>('All'); // 'All' | 'Keto' | 'Mediterranean'
   // New: rota state
   const [rotaPaused, setRotaPaused] = useState<RotaPausedMap>({});
   const [rotaWeekStartMap, setRotaWeekStartMap] = useState<RotaWeekStartMap>({});
   const [cookedMap, setCookedMap] = useState<Record<string, boolean>>({});
   const [pantry, setPantry] = useState<PantryItem[]>([]);
+  // Track pause-shift history to restore on unpause of the same day
+  const [pauseShiftHistory, setPauseShiftHistory] = useState<Record<string, { before: MealPlan[]; after: MealPlan[] }>>({});
 
   // Get start of week (Monday)
   const getStartOfWeek = (date: Date) => {
@@ -138,6 +144,9 @@ export default function WeeklyTimelineScreen() {
   const cookedRaw = await AsyncStorage.getItem('cookedMeals');
   setCookedMap(cookedRaw ? JSON.parse(cookedRaw) : {});
   setPantry(await loadPantry());
+  // Load pause-shift history
+  const historyRaw = await AsyncStorage.getItem('pauseShiftHistory');
+  setPauseShiftHistory(historyRaw ? JSON.parse(historyRaw) : {});
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -174,11 +183,114 @@ export default function WeeklyTimelineScreen() {
   const isPaused = (dateStr: string) => !!rotaPaused[dateStr];
 
   const togglePause = async (dateStr: string) => {
-    const updated: RotaPausedMap = { ...rotaPaused, [dateStr]: !rotaPaused[dateStr] };
+    const willPause = !rotaPaused[dateStr];
+    const updated: RotaPausedMap = { ...rotaPaused, [dateStr]: willPause };
     // Clean false to avoid clutter
     if (!updated[dateStr]) delete updated[dateStr];
     setRotaPaused(updated);
     await AsyncStorage.setItem('rotaPaused', JSON.stringify(updated));
+
+    // If we just paused this day, shift meals down one non-paused day starting from this date
+    if (willPause) {
+      try {
+        const result = shiftMealsFromDate(mealPlan, dateStr, updated);
+        if (result) {
+          // Save new plan
+          await saveMealPlan(result.plan);
+          // Record history for restoration on unpause of this date
+          const nextHistory = { ...pauseShiftHistory, [dateStr]: { before: result.before, after: result.after } };
+          setPauseShiftHistory(nextHistory);
+          await AsyncStorage.setItem('pauseShiftHistory', JSON.stringify(nextHistory));
+        }
+      } catch (e) {
+        console.error('Failed to shift meals after pause:', e);
+      }
+      return;
+    }
+
+    // If we unpaused this day, and we have history, restore order
+    try {
+      const hist = pauseShiftHistory[dateStr];
+      if (hist) {
+        // Start from current plan
+        let restored = [...mealPlan];
+        // Remove entries that were placed by the shift (match by date and recipeId)
+        const afterKeySet = new Set(hist.after.map(a => `${a.date}__${a.recipeId}`));
+        restored = restored.filter(m => !afterKeySet.has(`${m.date}__${m.recipeId}`));
+        // Also ensure we clear target dates for restoration to avoid collisions
+        const beforeDates = new Set(hist.before.map(b => b.date));
+        restored = restored.filter(m => !beforeDates.has(m.date));
+        // Add back the original entries (before snapshot)
+        restored.push(...hist.before);
+        // Sort by date asc
+        restored.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        await saveMealPlan(restored);
+        // Clear history for this date
+        const { [dateStr]: _, ...remaining } = pauseShiftHistory;
+        setPauseShiftHistory(remaining);
+        await AsyncStorage.setItem('pauseShiftHistory', JSON.stringify(remaining));
+      }
+    } catch (e) {
+      console.error('Failed to restore meals after unpause:', e);
+    }
+  };
+
+  // Helper: add N days to YYYY-MM-DD
+  const addDaysStr = (dateStr: string, days: number): string => {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + days);
+    return formatDate(d);
+  };
+
+  // Helper: next non-paused day strictly after the given date
+  const nextNonPausedAfter = (dateStr: string, pausedMap: RotaPausedMap): string => {
+    let attempts = 0;
+    let ds = addDaysStr(dateStr, 1);
+    while (pausedMap[ds]) {
+      ds = addDaysStr(ds, 1);
+      if (++attempts > 366) break; // safety
+    }
+    return ds;
+  };
+
+  // Shift all meals on or after startDate one non-paused day forward, preserving order and avoiding collisions.
+  const shiftMealsFromDate = (
+    plan: MealPlan[],
+    startDate: string,
+    pausedMap: RotaPausedMap,
+  ): { plan: MealPlan[]; before: MealPlan[]; after: MealPlan[] } | null => {
+    // Collect affected entries (>= startDate) sorted by date asc
+    const affected = plan
+      .filter((m) => m.date >= startDate)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+    if (affected.length === 0) return null; // nothing to shift
+
+    // Build new targets without collisions
+    const targets: { orig: MealPlan; newDate: string }[] = [];
+    let lastPlaced: string | null = null;
+    for (const m of affected) {
+      // Desired date is next non-paused AFTER original date
+      let desired = nextNonPausedAfter(m.date, pausedMap);
+      // Ensure strictly increasing to avoid collisions
+      if (lastPlaced && desired <= lastPlaced) {
+        // place after lastPlaced
+        desired = nextNonPausedAfter(lastPlaced, pausedMap);
+      }
+      targets.push({ orig: m, newDate: desired });
+      lastPlaced = desired;
+    }
+
+    // Rebuild plan: remove affected originals, then add shifted entries
+    const unaffected = plan.filter((m) => m.date < startDate);
+    const shiftedEntries = targets.map(({ orig, newDate }) => ({ ...orig, date: newDate }));
+    const shifted: MealPlan[] = [
+      ...unaffected,
+      ...shiftedEntries,
+    ];
+    // Sort final plan by date asc for consistency
+    shifted.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    return { plan: shifted, before: affected, after: shiftedEntries };
   };
 
   const assignRecipeToDay = async (recipeId: string, recipeTitle: string) => {
@@ -225,6 +337,40 @@ export default function WeeklyTimelineScreen() {
         }
       ]
     );
+  };
+
+  // Pick a random recipe, optionally by tag
+  const pickRandomRecipe = (tag?: 'Keto' | 'Mediterranean'): Recipe | null => {
+    const pool = tag ? recipes.filter(r => r.tags && r.tags.includes(tag)) : recipes;
+    if (!pool || pool.length === 0) return null;
+    const idx = Math.floor(Math.random() * pool.length);
+    return pool[idx];
+  };
+
+  // Assign a random recipe to a given date, replacing any existing assignment
+  const assignRandomForDate = async (dateStr: string, tag?: 'Keto' | 'Mediterranean') => {
+    if (isPaused(dateStr)) {
+      const msg = 'This day is paused. Resume the day to assign a recipe.';
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(msg);
+      } else {
+        Alert.alert('Paused', msg);
+      }
+      return;
+    }
+    const recipe = pickRandomRecipe(tag);
+    if (!recipe) {
+      const msg = tag ? `No ${tag} recipes available.` : 'No recipes available.';
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(msg);
+      } else {
+        Alert.alert('No Recipes', msg);
+      }
+      return;
+    }
+    const newPlan = mealPlan.filter(m => m.date !== dateStr);
+    newPlan.push({ date: dateStr, recipeId: recipe.id, recipeTitle: recipe.title, serves: 4 });
+    await saveMealPlan(newPlan);
   };
 
   // Update serves for a specific day (2 or 4)
@@ -321,32 +467,45 @@ export default function WeeklyTimelineScreen() {
     setCurrentWeek(new Date());
   };
 
-  const generateRandomMealPlan = async () => {
-    if (recipes.length === 0) {
-      Alert.alert('No Recipes', 'Please add some recipes first before generating a meal plan.');
+  const generateRandomMealPlan = async (tag?: 'Keto' | 'Mediterranean') => {
+    const source = tag ? recipes.filter(r => r.tags && r.tags.includes(tag)) : recipes;
+    if (source.length === 0) {
+      const msg = tag ? `No ${tag} recipes available. Add some or change the filter.` : 'Please add some recipes first before generating a meal plan.';
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+          window.alert(msg);
+        }
+      } else {
+        Alert.alert('No Recipes', msg);
+      }
       return;
     }
+
+    const title = tag ? `Generate ${tag} Meal Plan` : 'Generate Random Meal Plan';
+    const prompt = tag
+      ? `This will replace your current meal plan with random ${tag} recipes for this week. Continue?`
+      : 'This will replace your current meal plan with random recipes for this week. Continue?';
 
     // Web confirm and immediate generation
     if (Platform.OS === 'web') {
       const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
-        ? window.confirm('This will replace your current meal plan with random recipes for this week. Continue?')
+        ? window.confirm(prompt)
         : true;
       if (!ok) return;
       try {
         const weekDays = getWeekDays();
-        const shuffled = [...recipes].sort(() => 0.5 - Math.random());
-    const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
+        const shuffled = [...source].sort(() => 0.5 - Math.random());
+        const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
           const recipe = shuffled[index % shuffled.length];
           return {
             date: formatDate(day),
             recipeId: recipe.id,
-      recipeTitle: recipe.title,
-      serves: 4,
+            recipeTitle: recipe.title,
+            serves: 4,
           };
         });
         await saveMealPlan(newMealPlan);
-        Alert.alert('Success!', 'Random meal plan generated successfully!');
+        Alert.alert('Success!', `Random ${tag ?? ''}${tag ? ' ' : ''}meal plan generated successfully!`.trim());
       } catch (error) {
         console.error('Error generating random meal plan:', error);
         Alert.alert('Error', 'Failed to generate meal plan');
@@ -355,35 +514,33 @@ export default function WeeklyTimelineScreen() {
     }
 
     Alert.alert(
-      'Generate Random Meal Plan',
-      'This will replace your current meal plan with random recipes for this week. Continue?',
+      title,
+      prompt,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Generate', 
+        {
+          text: 'Generate',
           onPress: async () => {
             try {
               const weekDays = getWeekDays();
-              const shuffled = [...recipes].sort(() => 0.5 - Math.random());
-              
-        const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
+              const shuffled = [...source].sort(() => 0.5 - Math.random());
+              const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
                 const recipe = shuffled[index % shuffled.length];
                 return {
                   date: formatDate(day),
                   recipeId: recipe.id,
-          recipeTitle: recipe.title,
-          serves: 4,
+                  recipeTitle: recipe.title,
+                  serves: 4,
                 };
               });
-
               await saveMealPlan(newMealPlan);
-              Alert.alert('Success!', 'Random meal plan generated successfully!');
+              Alert.alert('Success!', `Random ${tag ?? ''}${tag ? ' ' : ''}meal plan generated successfully!`.trim());
             } catch (error) {
               console.error('Error generating random meal plan:', error);
               Alert.alert('Error', 'Failed to generate meal plan');
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -434,8 +591,38 @@ export default function WeeklyTimelineScreen() {
   const weekDays = getWeekDays();
   const weekStartPerson = getWeekStartPerson(currentWeek);
 
+  // Swipe left/right to navigate weeks
+  const swipeResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gestureState) => {
+        const { dx, dy } = gestureState;
+        // Activate when horizontal intent is strong and exceeds threshold
+        return Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) + 6;
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        const { dx } = gestureState;
+        if (dx <= -50) {
+          navigateWeek('next');
+          if (Platform.OS === 'android') {
+            ToastAndroid.show('Next week', ToastAndroid.SHORT);
+          } else {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        } else if (dx >= 50) {
+          navigateWeek('prev');
+          if (Platform.OS === 'android') {
+            ToastAndroid.show('Previous week', ToastAndroid.SHORT);
+          } else {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        }
+      },
+    })
+  ).current;
+
   return (
-    <ScrollView style={shared.screenContainer}>
+    <ThemedView style={{ flex: 1 }} {...swipeResponder.panHandlers}>
+      <ScrollView style={shared.screenContainer}>
       <ThemedView style={shared.headerBar}>
         <BackButton onPress={handleBack} />
         <ThemedText type="title" style={shared.screenTitle}>Weekly Meal Plan</ThemedText>
@@ -481,9 +668,16 @@ export default function WeeklyTimelineScreen() {
             <ThemedView style={styles.randomPlanRow}>
               <TouchableOpacity 
                 style={styles.randomPlanButton}
-                onPress={generateRandomMealPlan}
+                onPress={() => generateRandomMealPlan()}
               >
                 <ThemedText style={styles.randomPlanButtonText}>🎲 Generate Random Week</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.randomPlanButton, styles.ketoPlanButton]}
+                onPress={() => generateRandomMealPlan('Keto')}
+              >
+                <ThemedText style={styles.randomPlanButtonText}>🥑 Generate Keto Week</ThemedText>
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -496,18 +690,7 @@ export default function WeeklyTimelineScreen() {
           </ThemedView>
         )}
 
-        {/* Meal Plan Summary */}
-        {mealPlan.length > 0 && (
-          <ThemedView style={styles.summaryContainer}>
-            <ThemedText style={styles.summaryTitle}>📋 {mealPlan.length} meal{mealPlan.length !== 1 ? 's' : ''} planned this week</ThemedText>
-            <TouchableOpacity 
-              style={styles.viewShoppingButton}
-              onPress={() => router.push('/shopping-list')}
-            >
-              <ThemedText style={styles.viewShoppingButtonText}>🛒 View Shopping List ({getIngredientCount()} ingredients)</ThemedText>
-            </TouchableOpacity>
-          </ThemedView>
-        )}
+  {/* Summary removed per request */}
 
         {/* Week Days */}
         <ThemedView style={styles.weekContainer}>
@@ -535,6 +718,18 @@ export default function WeeklyTimelineScreen() {
                     <ThemedText style={styles.pauseButtonText}>{paused ? '▶ Resume' : '⏸ Pause'}</ThemedText>
                   </TouchableOpacity>
                 </ThemedView>
+
+                {/* Per-day random assignment buttons */}
+                {!paused && (
+                  <ThemedView style={styles.randomRow}>
+                    <TouchableOpacity style={styles.randomChip} onPress={() => assignRandomForDate(dateString)}>
+                      <ThemedText style={styles.randomChipText}>🎲 Any</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.randomChip, styles.randomChipKeto]} onPress={() => assignRandomForDate(dateString, 'Keto')}>
+                      <ThemedText style={[styles.randomChipText, styles.randomChipTextKeto]}>🥑 Keto</ThemedText>
+                    </TouchableOpacity>
+                  </ThemedView>
+                )}
 
                 <TouchableOpacity 
                   style={[
@@ -654,8 +849,32 @@ export default function WeeklyTimelineScreen() {
             </ThemedView>
           </ThemedView>
 
+          {/* Tag filter pills */}
+          <ThemedView style={[styles.filterBar, { paddingHorizontal: 20, marginBottom: 6 }]}>
+            {['All', 'Keto', 'Mediterranean'].map((tag) => {
+              const active = activeTagFilter === tag;
+              return (
+                <TouchableOpacity
+                  key={tag}
+                  onPress={() => setActiveTagFilter(tag)}
+                  style={[styles.filterPill, active && styles.filterPillActive]}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={[styles.filterPillText, active && styles.filterPillTextActive]}>
+                    {tag}
+                  </ThemedText>
+                </TouchableOpacity>
+              );
+            })}
+          </ThemedView>
+          {activeTagFilter !== 'All' && (
+            <ThemedText style={[styles.filterInfo, { paddingHorizontal: 20 }]}>
+              Filtering by {activeTagFilter}
+            </ThemedText>
+          )}
+
           <ScrollView style={styles.recipeList}>
-            {recipes.map((recipe) => (
+            {(activeTagFilter === 'All' ? recipes : recipes.filter(r => r.tags && r.tags.includes(activeTagFilter))).map((recipe) => (
               <TouchableOpacity
                 key={recipe.id}
                 style={styles.recipeOption}
@@ -667,10 +886,16 @@ export default function WeeklyTimelineScreen() {
                 </ThemedText>
               </TouchableOpacity>
             ))}
+            {((activeTagFilter !== 'All' ? recipes.filter(r => r.tags && r.tags.includes(activeTagFilter)) : recipes).length === 0) && (
+              <ThemedView style={{ padding: 20 }}>
+                <ThemedText style={{ color: '#666' }}>No recipes match this filter.</ThemedText>
+              </ThemedView>
+            )}
           </ScrollView>
         </ThemedView>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </ThemedView>
   );
 }
 
@@ -693,41 +918,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  summaryContainer: {
-    backgroundColor: '#f0f8ff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF6B6B',
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  viewShoppingButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 20,
-    alignSelf: 'center',
-  },
-  viewShoppingButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  // summary card styles removed
   randomPlanContainer: {
     alignItems: 'center',
     marginBottom: 20,
   },
   randomPlanRow: {
     flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  gap: 10,
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  alignItems: 'center',
+  width: '100%',
   },
   randomPlanButton: {
     backgroundColor: '#9C27B0',
@@ -739,18 +941,29 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  // Responsive: let buttons share space and wrap to new lines
+  flexBasis: '48%',
+  flexGrow: 1,
+  flexShrink: 1,
   },
   randomPlanButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  flexShrink: 1,
   },
   clearPlanButton: {
     backgroundColor: '#ff4444',
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderRadius: 25,
+  flexBasis: '48%',
+  flexGrow: 1,
+  flexShrink: 1,
+  },
+  ketoPlanButton: {
+    backgroundColor: '#2e7d32',
   },
   clearPlanButtonText: {
     color: '#fff',
@@ -762,10 +975,11 @@ const styles = StyleSheet.create({
   },
   weekNavigation: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+  justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
     paddingHorizontal: 10,
+  flexWrap: 'wrap',
   },
   navButton: {
     padding: 10,
@@ -830,9 +1044,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
+  flexWrap: 'wrap',
   },
   dayHeaderLeft: {
-    gap: 2,
+  gap: 2,
+  flexShrink: 1,
   },
   dayName: {
     fontSize: 16,
@@ -916,6 +1132,32 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 16,
   },
+  // Random per-day row
+  randomRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  flexWrap: 'wrap',
+  },
+  randomChip: {
+    backgroundColor: '#eee',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  randomChipKeto: {
+    backgroundColor: '#e6f4ea',
+    borderColor: '#c5e1c8',
+  },
+  randomChipText: {
+    color: '#333',
+    fontWeight: '700',
+  },
+  randomChipTextKeto: {
+    color: '#2e7d32',
+  },
   noRecipesContainer: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -964,6 +1206,34 @@ const styles = StyleSheet.create({
   },
   recipeList: {
     flex: 1,
+  },
+  // Tag filter styles (mirrored from browse-recipes)
+  filterBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterPill: {
+    backgroundColor: '#ececec',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  filterPillActive: {
+    backgroundColor: '#FF6B6B',
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#444',
+  },
+  filterPillTextActive: {
+    color: '#fff',
+  },
+  filterInfo: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 8,
   },
   recipeOption: {
     padding: 20,

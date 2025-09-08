@@ -82,6 +82,9 @@ export default function ShoppingListScreen() {
   // Seeded ingredient aliases (from seeding)
   const [seededAliases, setSeededAliases] = useState<{ name: string; aliases: string[] }[]>([]);
   const [pantryItems, setPantryItems] = useState<{ name: string; quantity: number; unit: string }[]>([]);
+  // Hoist category select
+  const [hoistCategory, setHoistCategory] = useState<string | 'None'>('None');
+  const [showHoistPicker, setShowHoistPicker] = useState(false);
 
   // Helpers: canonicalization
   const stripParentheticals = (s: string) => s.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
@@ -543,13 +546,17 @@ export default function ShoppingListScreen() {
   const CATEGORY_DEFS: { name: string; keywords: string[] }[] = [
     // Produce & fresh items
     { name: 'Vegetables', keywords: ['onion','pepper','pepper ','pepper,','jalapeño','jalapeno','jalapeños','jalapenos','courgette','zucchini','tomato','lettuce','leek','spinach','mushroom','broccoli','squash','carrot','pak choi','cavolo','garlic','ginger','chilli','spring onion','lemon'] },
-    { name: 'Herbs', keywords: ['parsley','coriander','thyme','rosemary','dill','basil','oregano','mint'] },
     // Proteins
     { name: 'Meat', keywords: ['chicken','lamb','sausage','bacon','pancetta','chorizo','thigh','breast','mince','pork','prosciutto','ham'] },
     { name: 'Seafood', keywords: ['fish','prawn','prawns','haddock','cod','plaice','bass','hake','mackerel'] },
     // Dairy & eggs
     { name: 'Dairy', keywords: ['cheese','feta','mozzarella','parmesan','yoghurt','yogurt','butter','egg'] },
-    { name: 'Spices & Seasoning', keywords: ['cumin','coriander powder','paprika','garam masala','cinnamon','turmeric','fajita','piri piri','pepper','salt','seasoning','curry paste','chilli flakes','bay leaf','mixed herbs'] },
+    { name: 'Herbs, Spices & Seasoning', keywords: [
+      // Herbs
+      'parsley','coriander','thyme','rosemary','dill','basil','oregano','mint',
+      // Spices & Seasoning
+      'cumin','coriander powder','paprika','garam masala','cinnamon','turmeric','fajita','piri piri','pepper','salt','seasoning','curry paste','chilli flakes','bay leaf','mixed herbs'
+    ] },
     { name: 'Pantry / Dry', keywords: ['oil','lentil','beans','bean','barley','chickpea','apricot','almond','anchovy','pesto','tomato purée','tomato puree','stock cube','noodle','pasta','spaghetti','courgetti','nuts','pine nuts','seeds','flour','vinegar','sriracha','soy sauce','miso'] },
   ];
 
@@ -567,8 +574,10 @@ export default function ShoppingListScreen() {
     acc[cat].push(item);
     return acc;
   }, {});
-
-  const CATEGORY_ORDER = [...CATEGORY_DEFS.map(c => c.name), 'Other'];
+  const baseCategoryOrder = [...CATEGORY_DEFS.map(c => c.name), 'Other'];
+  const hoistedOrder = (hoistCategory && hoistCategory !== 'None' && baseCategoryOrder.includes(hoistCategory))
+    ? [hoistCategory, ...baseCategoryOrder.filter(c => c !== hoistCategory)]
+    : baseCategoryOrder;
 
   return (
     <ScrollView style={styles.container}>
@@ -670,8 +679,45 @@ export default function ShoppingListScreen() {
               </TouchableOpacity>
             )}
 
+            {/* Ingredient type selector */}
+            <ThemedView style={styles.hoistRow}>
+              <ThemedText style={styles.hoistLabel}>Ingredient type:</ThemedText>
+              <TouchableOpacity style={styles.hoistSelect} onPress={() => setShowHoistPicker(true)}>
+                <ThemedText style={styles.hoistSelectText}>{hoistCategory === 'None' ? 'None' : hoistCategory}</ThemedText>
+              </TouchableOpacity>
+              {hoistCategory !== 'None' && (
+                <TouchableOpacity style={styles.hoistClear} onPress={() => setHoistCategory('None')}>
+                  <ThemedText style={styles.hoistClearText}>Reset</ThemedText>
+                </TouchableOpacity>
+              )}
+            </ThemedView>
+
+            {/* Ingredient type modal */}
+            <Modal
+              visible={showHoistPicker}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowHoistPicker(false)}
+            >
+              <View style={styles.modalBackdrop}>
+                <View style={styles.modalCard}>
+                  <ThemedText type="subtitle" style={{ marginBottom: 8 }}>Ingredient type</ThemedText>
+                  <ScrollView style={{ maxHeight: 320 }}>
+                    {(['None', ...baseCategoryOrder] as string[]).map((name) => (
+                      <TouchableOpacity key={name} style={styles.hoistOption} onPress={() => { setHoistCategory(name as any); setShowHoistPicker(false); }}>
+                        <ThemedText style={styles.hoistOptionText}>{name}</ThemedText>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <TouchableOpacity style={[styles.secondaryButton, { marginTop: 12 }]} onPress={() => setShowHoistPicker(false)}>
+                    <ThemedText style={styles.secondaryButtonText}>Cancel</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+
             <ThemedView style={styles.shoppingItems}>
-              {CATEGORY_ORDER.filter(c => grouped[c] && grouped[c].length > 0).map(category => (
+              {hoistedOrder.filter(c => grouped[c] && grouped[c].length > 0).map(category => (
                 <ThemedView key={category} style={styles.categoryBlock}>
                   <ThemedText style={styles.categoryHeading}>{category}</ThemedText>
                   {grouped[category].map((item, index) => {
@@ -995,6 +1041,52 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Hoist selector styles
+  hoistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  hoistLabel: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  hoistSelect: {
+    backgroundColor: '#eee',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  hoistSelectText: {
+    color: '#333',
+    fontWeight: '700',
+  },
+  hoistClear: {
+    marginLeft: 'auto',
+    backgroundColor: '#ffe8e8',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  hoistClearText: {
+    color: '#d84343',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  hoistOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  hoistOptionText: {
+    fontSize: 16,
+    color: '#333',
   },
   shoppingItems: {
     gap: 12,
