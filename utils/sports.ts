@@ -106,6 +106,60 @@ function normalizeEvents(events: any[] | undefined | null): NormalEvent[] {
   }));
 }
 
+// Helper: strict EPL name check and negative filters
+function isPremierLeagueName(name?: string | null): boolean {
+  const n = (name || '').toLowerCase();
+  if (!n) return false;
+  if (!n.includes('premier')) return false;
+  // Exclude other English leagues or unrelated comps
+  if (/championship|league one|league two|national league|scottish|women|wsl|northern|southern/.test(n)) return false;
+  return /english premier league|premier league/.test(n);
+}
+
+// TheSportsDB: find English Premier League league id and upcoming events (web-friendly)
+async function tsdFindEPLId(): Promise<string | null> {
+  try {
+    // Prefer country-constrained search to avoid Scottish/other leagues
+    const leagues = await fetchJson<{ leagues?: any[] }>(
+      `${BASE}/search_all_leagues.php?c=${encodeURIComponent('England')}&s=${encodeURIComponent('Soccer')}`
+    );
+    const list = leagues.leagues || [];
+    const exact = list.find((l) => /^english premier league$/i.test(l.strLeague || ''));
+    if (exact?.idLeague) return exact.idLeague;
+    const byName = list.find((l) => isPremierLeagueName(l.strLeague));
+    if (byName?.idLeague) return byName.idLeague;
+    // Fallback: known id for EPL on TheSportsDB
+    return '4328';
+  } catch {
+    return '4328';
+  }
+}
+
+async function tsdNextForLeague(leagueId: string, limit = 10): Promise<NormalEvent[]> {
+  try {
+    const next = await fetchJson<{ events?: any[] }>(
+      `${BASE}/eventsnextleague.php?id=${encodeURIComponent(leagueId)}`
+    );
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      try {
+        console.log('[Sports][TSD] Using TheSportsDB fallback. League ID:', leagueId);
+        console.log('[Sports][TSD] Raw events sample:', (next.events || []).slice(0, 3));
+      } catch {}
+    }
+    const events = normalizeEvents(next.events)
+      .filter((e) => isPremierLeagueName(e.competition))
+      .slice(0, limit);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      try {
+        console.log('[Sports][TSD] Normalized EPL events sample:', events.slice(0, 3));
+      } catch {}
+    }
+    return events;
+  } catch {
+    return [];
+  }
+}
+
 // Soccer: Leeds United next fixtures
 export async function getLeedsFixtures(limit = 5): Promise<NormalEvent[]> {
   // Prefer API-Football if key present; else fallback to TheSportsDB
@@ -351,27 +405,51 @@ type FPLFixture = {
 
 // Get upcoming Premier League fixtures (league-wide)
 export async function getPremierLeagueNextFixtures(limit = 10): Promise<NormalEvent[]> {
-  // Load teams to map ids -> names
-  const bootstrap = await fetchFPL<{ teams: FPLTeam[] }>('/bootstrap-static/');
-  const teams = new Map<number, FPLTeam>(bootstrap.teams.map((t) => [t.id, t]));
-  // Get all fixtures; filter to future ones by kickoff_time
-  const fixtures = await fetchFPL<FPLFixture[]>('/fixtures/');
-  const now = Date.now();
-  const upcoming = fixtures
-    .filter((f) => f.kickoff_time && new Date(f.kickoff_time).getTime() >= now)
-    .sort((a, b) => new Date(a.kickoff_time || 0).getTime() - new Date(b.kickoff_time || 0).getTime())
-    .slice(0, limit);
+  try {
+    // Primary: FPL (best data, but CORS-blocked on web)
+    const bootstrap = await fetchFPL<{ teams: FPLTeam[] }>('/bootstrap-static/');
+    const teams = new Map<number, FPLTeam>(bootstrap.teams.map((t) => [t.id, t]));
+    const fixtures = await fetchFPL<FPLFixture[]>('/fixtures/');
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      try {
+        console.log('[Sports][FPL] Using FPL primary source. Teams sample:', bootstrap.teams.slice(0, 3));
+        console.log('[Sports][FPL] Fixtures raw sample:', fixtures.slice(0, 3));
+      } catch {}
+    }
+    const now = Date.now();
+    const upcoming = fixtures
+      .filter((f) => f.kickoff_time && new Date(f.kickoff_time).getTime() >= now)
+      .sort((a, b) => new Date(a.kickoff_time || 0).getTime() - new Date(b.kickoff_time || 0).getTime())
+      .slice(0, limit);
 
-  return upcoming.map((f) => {
-    const home = teams.get(f.team_h)?.name || `Team ${f.team_h}`;
-    const away = teams.get(f.team_a)?.name || `Team ${f.team_a}`;
-    return {
-      id: String(f.id),
-      title: `${home} vs ${away}`,
-      iso: f.kickoff_time,
-      competition: f.event ? `Premier League GW ${f.event}` : 'Premier League',
-    } satisfies NormalEvent;
-  });
+    const normalized = upcoming.map((f) => {
+      const home = teams.get(f.team_h)?.name || `Team ${f.team_h}`;
+      const away = teams.get(f.team_a)?.name || `Team ${f.team_a}`;
+      return {
+        id: String(f.id),
+        title: `${home} vs ${away}`,
+        iso: f.kickoff_time,
+        competition: f.event ? `Premier League GW ${f.event}` : 'Premier League',
+      } satisfies NormalEvent;
+    });
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      try {
+        console.log('[Sports][FPL] Normalized upcoming EPL events sample:', normalized.slice(0, 3));
+      } catch {}
+    }
+    return normalized;
+  } catch (e) {
+    // Fallback: TheSportsDB (web-friendly)
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      try {
+        console.log('[Sports][FPL] FPL fetch failed; falling back to TheSportsDB. Error:', e);
+      } catch {}
+    }
+    const id = await tsdFindEPLId();
+    const events = await tsdNextForLeague(id || '4328', limit);
+    // Ensure the competition label says Premier League for UI consistency
+    return events.map((e) => ({ ...e, competition: 'Premier League' }));
+  }
 }
 
 // Get upcoming fixtures for a specific PL team by (partial) name
