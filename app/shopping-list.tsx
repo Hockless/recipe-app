@@ -91,9 +91,18 @@ export default function ShoppingListScreen() {
   const normalizeSeparators = (s: string) => s.replace(/[\-_/]+/g, ' ');
   const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const removeDescriptors = (s: string) => {
+    // Phrases and words that describe preparation/cut/quality and should not affect item identity
     const DESCRIPTORS = [
-      'finely chopped','roughly chopped','chopped','grated','sliced','diced','halved','minced','crushed',
-      'fresh','jarred','defrosted','optional','for dressing','for garnish'
+      // common phrases
+      'very thinly sliced','thinly sliced','thickly sliced','finely sliced','finely grated','coarsely grated',
+      'finely chopped','roughly chopped','coarsely chopped',
+      'chopped','grated','sliced','diced','minced','crushed','smashed','peeled','trimmed','pitted','deseeded',
+      'halved','quartered','wedge','wedges',
+      'ground',
+      // adjectives
+  'very','thinly','thickly','roughly','finely','small','large','medium','best-quality','full-fat','extra','dried',
+      // qualifiers we don\'t want to group by
+      'fresh','jarred','defrosted','optional','for dressing','for garnish','to serve','leaves'
     ];
     let out = ' ' + s + ' ';
     for (const d of DESCRIPTORS) {
@@ -102,7 +111,14 @@ export default function ShoppingListScreen() {
     }
     return out.replace(/\s+/g, ' ').trim();
   };
-  const baseNormalize = (s: string) => removeDescriptors(normalizeSeparators(stripParentheticals(s.toLowerCase().trim())));
+  const baseNormalize = (s: string) => {
+    const lowered = s.toLowerCase().trim();
+    // First strip full parenthetical groups (so commas inside them don't truncate the core name)
+    const withoutParens = stripParentheticals(lowered);
+    // Now take the segment before the first comma (prep notes like ", chopped")
+    const primary = withoutParens.split(',')[0];
+    return removeDescriptors(normalizeSeparators(primary));
+  };
 
   const buildAliasMap = () => {
     const map = new Map<string, string>();
@@ -132,6 +148,9 @@ export default function ShoppingListScreen() {
       zucchini: 'Courgette',
       'bell pepper': 'Bell Pepper',
       'bell peppers': 'Bell Pepper',
+  'green pepper': 'Bell Pepper',
+  'red pepper': 'Bell Pepper',
+  'yellow pepper': 'Bell Pepper',
       peppers: 'Bell Pepper',
       pepper: 'Black Pepper',
       'cherry tomatoes': 'Tomato',
@@ -141,19 +160,58 @@ export default function ShoppingListScreen() {
       'feta cheese': 'Feta cheese',
       sriracha: 'Sriracha',
       lemongrass: 'Lemongrass',
+      // help robustly cluster common forms
+      'garlic cloves': 'Garlic',
+      'garlic clove': 'Garlic',
+      mushrooms: 'Mushroom',
+      'red onion': 'Onion',
+      onions: 'Onion',
+      'brown onion': 'Onion',
+      'white onion': 'Onion',
+  // Olives consolidation & quality descriptors
+  olives: 'Olives',
+  'black olives': 'Olives',
+  'green olives': 'Olives',
+  'best-quality black olives': 'Olives',
+  // Chillies variants
+  'green chillies': 'Green Chilli',
+  'green chilli': 'Green Chilli',
+  'green chili': 'Green Chilli',
+  'green chilis': 'Green Chilli',
     };
     for (const [a, c] of Object.entries(EXTRAS)) add(c, a);
+  // Do not map plain 'cloves' to Garlic; treat as separate spice
+  map.delete('cloves');
     return map;
   };
 
   const aliasMap = buildAliasMap();
   const canonicalizeName = (name: string) => {
     const k = baseNormalize(name);
+    // Heuristics before map: collapse common patterns
+  if (k === 'cloves') return 'Cloves'; // spice
+  if (/^garlic\b.*\bcloves?\b/.test(k) || /^garlic\b/.test(k) && /\bcloves?\b/.test(k)) return 'Garlic';
+    if (/^spring onion/.test(k) || /^spring\s*onions?$/.test(k)) return 'Spring onion';
+    if (/^onions?$/.test(k) || /\bonion\b/.test(k) && !/spring\s*onion/.test(k)) return 'Onion';
+    if (/^mushrooms?$/.test(k) || /\bmushroom\b/.test(k)) return 'Mushroom';
+  // Salt variants
+  if (/^salt( flakes?)?$/.test(k) || /\bsea salt\b/.test(k) || /^flaked sea salt$/.test(k)) return 'Salt';
+  // Lemon / Lime consolidation (avoid lemongrass)
+  if (/^lemon\b/.test(k) && !/^lemongrass/.test(k)) return 'Lemon';
+  if (/^lime\b/.test(k)) return 'Lime';
+  // Stock consolidation by type
+  if (/^beef stock\b/.test(k)) return 'Beef stock';
+  if (/^chicken stock\b/.test(k)) return 'Chicken stock';
+  if (/^vegetable stock\b/.test(k)) return 'Vegetable stock';
+  // Generic stock (fallback)
+  if (/^stock\b/.test(k)) return 'Stock';
+
     const mapped = aliasMap.get(k);
     if (mapped) return mapped;
     // Fallback: title case of stripped name
-    const pretty = k.replace(/\b\w/g, m => m.toUpperCase());
-    return pretty || name.trim();
+  const pretty = k.replace(/\b\w/g, m => m.toUpperCase());
+  // Final safety: remove any lingering parentheticals from original name just in case
+  return (pretty || name.trim()).replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
   };
 
   const loadData = async () => {
@@ -236,14 +294,50 @@ export default function ShoppingListScreen() {
         const recipe = recipes.find(r => r.id === meal.recipeId);
         if (recipe) {
           recipe.ingredients.forEach(ingredient => {
+            // Step 1: expand alternative ingredients like "coriander or parsley" or "coconut / rapeseed oil"
+            const expandAlternatives = (raw: string): string[] => {
+              if (!raw) return [];
+              const lowered = raw.toLowerCase();
+              // Special collapsing: rosemary sprig or dried rosemary -> Rosemary
+              if (/rosemary\s+sprig\s+or\s+dried\s+rosemary/.test(lowered)) return ['Rosemary'];
+              // If 'or' appears only inside parentheses, do not split (e.g., Kaffir lime leaves (fresh or dried))
+              const withoutParens = raw.replace(/\([^)]*\)/g, '');
+              const hasOutsideOr = /\bor\b/i.test(withoutParens);
+              if (hasOutsideOr) {
+                // Split on ' or ' handling multi-part chains
+                const parts = withoutParens.split(/\bor\b/gi)
+                  .map(p => p.trim())
+                  .filter(Boolean)
+                  // Remove generic catch-alls that add noise
+                  .filter(p => !/^other (seeds|nuts|spices|herbs)$/i.test(p));
+                if (parts.length > 1 && parts.length <= 5) {
+                  return parts;
+                }
+              }
+              // Slash separated synonyms (e.g., coconut / rapeseed oil)
+              if (/\//.test(raw)) {
+                const parts = raw.split('/')
+                  .map(p => p.trim())
+                  .filter(Boolean);
+                if (parts.length > 1 && parts.length <= 5) return parts;
+              }
+              return [raw];
+            };
+
+            const nameVariants = expandAlternatives(ingredient.name);
+            if (nameVariants.length === 0) return;
+            // If this is an alternative set, mark amount note to avoid double shopping (optional future logic)
+            const isAlternative = nameVariants.length > 1;
+            nameVariants.forEach((variant, idx) => {
+              const workingIng = { ...ingredient, name: variant };
             if (!ingredient.name?.trim()) return;
             
-            const canonicalName = canonicalizeName(ingredient.name);
+            const canonicalName = canonicalizeName(workingIng.name);
 
             // New: Skip ingredients that are already in the user's fridge
-            if (fridgeSet.has(baseNormalize(ingredient.name))) return;
+            if (fridgeSet.has(baseNormalize(workingIng.name))) return;
             
-            const { qty, unit } = parseAmount(ingredient.amount);
+            const { qty, unit } = parseAmount(workingIng.amount);
             if (qty && unit) {
       const baseServes = typeof recipe.serves === 'number' ? recipe.serves : 4;
       const targetServes = typeof meal.serves === 'number' ? meal.serves : 4;
@@ -254,8 +348,9 @@ export default function ShoppingListScreen() {
               requiredAgg.set(key, cur);
             } else {
               if (ingredientMap[canonicalName]) {
-                if (ingredient.amount && !ingredientMap[canonicalName].amounts.includes(ingredient.amount)) {
-                  ingredientMap[canonicalName].amounts.push(ingredient.amount);
+                const amt = workingIng.amount + (isAlternative ? ' (alt)' : '');
+                if (workingIng.amount && !ingredientMap[canonicalName].amounts.includes(amt)) {
+                  ingredientMap[canonicalName].amounts.push(amt);
                 }
                 if (!ingredientMap[canonicalName].recipes.includes(recipe.title)) {
                   ingredientMap[canonicalName].recipes.push(recipe.title);
@@ -263,13 +358,14 @@ export default function ShoppingListScreen() {
               } else {
                 ingredientMap[canonicalName] = {
                   name: canonicalName,
-                  amounts: ingredient.amount ? [ingredient.amount] : [],
+                  amounts: workingIng.amount ? [workingIng.amount + (isAlternative ? ' (alt)' : '')] : [],
                   recipes: [recipe.title],
                   checked: checkedItems[canonicalName.toLowerCase()] || false,
                   isCustom: false
                 };
               }
             }
+            });
           });
         }
       });
@@ -311,8 +407,14 @@ export default function ShoppingListScreen() {
       if (!a.isCustom && b.isCustom) return 1;
       return a.name.localeCompare(b.name);
     });
+    // Final pass: ensure display names are canonical (handles previously stored seeds or custom lingering descriptors)
+    const finalList = sortedList.map(item => {
+      if (item.isCustom) return item; // don't alter user custom items
+      const clean = canonicalizeName(item.name);
+      return clean === item.name ? item : { ...item, name: clean };
+    });
 
-    setShoppingList(sortedList);
+    setShoppingList(finalList);
   };
 
   const toggleItem = async (itemName: string) => {
@@ -547,21 +649,34 @@ export default function ShoppingListScreen() {
     // Produce & fresh items
     { name: 'Vegetables', keywords: ['onion','pepper','pepper ','pepper,','jalapeño','jalapeno','jalapeños','jalapenos','courgette','zucchini','tomato','lettuce','leek','spinach','mushroom','broccoli','squash','carrot','pak choi','cavolo','garlic','ginger','chilli','spring onion','lemon'] },
     // Proteins
-    { name: 'Meat', keywords: ['chicken','lamb','sausage','bacon','pancetta','chorizo','thigh','breast','mince','pork','prosciutto','ham'] },
+    { name: 'Meat', keywords: ['chicken','lamb','sausage','bacon','pancetta','chorizo','thigh','breast','mince','pork','prosciutto','ham','steak','steaks','rump','rib-eye','ribeye','beef'] },
     { name: 'Seafood', keywords: ['fish','prawn','prawns','haddock','cod','plaice','bass','hake','mackerel'] },
     // Dairy & eggs
-    { name: 'Dairy', keywords: ['cheese','feta','mozzarella','parmesan','yoghurt','yogurt','butter','egg'] },
+    { name: 'Dairy', keywords: ['cheese','cheddar','feta','mozzarella','parmesan','yoghurt','yogurt','butter','egg','cream'] },
     { name: 'Herbs, Spices & Seasoning', keywords: [
       // Herbs
       'parsley','coriander','thyme','rosemary','dill','basil','oregano','mint',
       // Spices & Seasoning
-      'cumin','coriander powder','paprika','garam masala','cinnamon','turmeric','fajita','piri piri','pepper','salt','seasoning','curry paste','chilli flakes','bay leaf','mixed herbs'
+      'cumin','coriander powder','paprika','garam masala','cinnamon','turmeric','fajita','piri piri','pepper','salt','seasoning','curry paste','chilli flakes','bay leaf','mixed herbs','clove','cloves'
     ] },
     { name: 'Pantry / Dry', keywords: ['oil','lentil','beans','bean','barley','chickpea','apricot','almond','anchovy','pesto','tomato purée','tomato puree','stock cube','noodle','pasta','spaghetti','courgetti','nuts','pine nuts','seeds','flour','vinegar','sriracha','soy sauce','miso'] },
   ];
 
   const categorizeItem = (rawName: string): string => {
     const name = rawName.toLowerCase();
+    // Priority overrides (exact/regex patterns first)
+    if (/(^|\s)(stock|broth)\b/.test(name)) return 'Pantry / Dry';
+    if (/cheddar/.test(name)) return 'Dairy';
+    if (/(rib[- ]?eye|rump|sirloin|steak|beef)/.test(name)) return 'Meat';
+  if (/\bwhite pepper\b|\bblack pepper\b/.test(name)) return 'Herbs, Spices & Seasoning';
+  if (/peppercorns?/.test(name)) return 'Herbs, Spices & Seasoning';
+  if (/(^|\b)(dried\s*)?chill?i( |-)?flakes?\b/.test(name)) return 'Herbs, Spices & Seasoning';
+    if (/\bcauliflower\b/.test(name)) return 'Vegetables';
+  if (/\bolives?\b/.test(name) && !/oil/.test(name)) return 'Vegetables';
+    // Avoid treating seasoning peppers as vegetables
+    if (/\bpepper\b/.test(name) && !/(bell pepper|red pepper|green pepper|yellow pepper)/.test(name) && /\b(black|white|pink|cayenne|aleppo|sichuan)\b/.test(name)) {
+      return 'Herbs, Spices & Seasoning';
+    }
     for (const cat of CATEGORY_DEFS) {
       if (cat.keywords.some(k => name.includes(k))) return cat.name;
     }
@@ -722,6 +837,7 @@ export default function ShoppingListScreen() {
                   <ThemedText style={styles.categoryHeading}>{category}</ThemedText>
                   {grouped[category].map((item, index) => {
                 const isChecked = checkedItems[item.name.toLowerCase().trim()];
+                const displayName = item.isCustom ? item.name : canonicalizeName(item.name);
                 return (
                   <TouchableOpacity
                     key={`${category}-${item.name}-${index}`}
@@ -735,7 +851,7 @@ export default function ShoppingListScreen() {
                       <ThemedView style={styles.itemDetails}>
                         <ThemedView style={styles.itemHeader}>
                           <ThemedText style={[styles.itemName, isChecked && styles.checkedText]}>
-                            {item.name}
+                            {displayName}
                           </ThemedText>
                           {item.isCustom && currentHistoryIndex === -1 && (
                             <TouchableOpacity 

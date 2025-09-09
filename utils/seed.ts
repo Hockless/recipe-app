@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { EXTRA_SEEDED_RECIPES } from './extra-seeds';
 
 // Local copies of shapes used by screens
 export interface Ingredient {
@@ -585,8 +586,8 @@ const SEED_VERSION_KEY = 'seedVersion';
 export async function ensureSeeded(targetVersion: number) {
   try {
     const [versionStr, existingStr] = await Promise.all([
-      AsyncStorage.getItem(SEED_VERSION_KEY),
-      AsyncStorage.getItem('recipes'),
+            AsyncStorage.getItem(SEED_VERSION_KEY),
+            AsyncStorage.getItem('recipes'),
     ]);
 
     const currentVersion = versionStr ? Number(versionStr) : 0;
@@ -598,13 +599,15 @@ export async function ensureSeeded(targetVersion: number) {
       if (!existingStr || existingRecipes.length === 0) {
         const merged = mergeSeeds(existingRecipes, SEEDED_RECIPES);
         await AsyncStorage.setItem('recipes', JSON.stringify(merged));
-    await ensureSeededIngredients(SEEDED_RECIPES);
+  await ensureSeededIngredients([...(SEEDED_RECIPES as Recipe[]), ...(EXTRA_SEEDED_RECIPES as unknown as Recipe[])]);
       } else {
-        // Apply non-breaking patches (tag injections / removals) even when no version bump
-        const patched = applySeedPatches(existingRecipes);
+  // Merge in any new built-in and extra seeds, then apply non-breaking patches
+  const mergedNoBump = mergeSeeds(existingRecipes, SEEDED_RECIPES);
+  const patched = applySeedPatches(mergedNoBump);
         if (patched.length !== existingRecipes.length || patched.some((r, i) => r !== existingRecipes[i])) {
           await AsyncStorage.setItem('recipes', JSON.stringify(patched));
         }
+  await ensureSeededIngredients([...(SEEDED_RECIPES as Recipe[]), ...(EXTRA_SEEDED_RECIPES as unknown as Recipe[])]);
       }
       return;
     }
@@ -614,7 +617,7 @@ export async function ensureSeeded(targetVersion: number) {
   merged = applySeedPatches(merged);
     await AsyncStorage.setItem('recipes', JSON.stringify(merged));
     await AsyncStorage.setItem(SEED_VERSION_KEY, String(targetVersion));
-  await ensureSeededIngredients(SEEDED_RECIPES);
+  await ensureSeededIngredients([...(SEEDED_RECIPES as Recipe[]), ...(EXTRA_SEEDED_RECIPES as unknown as Recipe[])]);
   } catch (e) {
     // Fail silently; app will just show empty state
     // console.warn('Seeding failed', e);
@@ -628,8 +631,10 @@ function mergeSeeds(existing: Recipe[], seeds: Recipe[]): Recipe[] {
   for (const r of existing) {
     byTitle.set(r.title.trim().toLowerCase(), r);
   }
+  // Compose full seed list: built-in + extras (extras can override built-ins by title)
+  const fullSeeds: Recipe[] = [...seeds, ...(EXTRA_SEEDED_RECIPES as unknown as Recipe[])];
   // Add all seeds, replacing any user recipe with the same title
-  for (const s of seeds) {
+  for (const s of fullSeeds) {
     byTitle.set(s.title.trim().toLowerCase(), s);
   }
   // Preserve original order: newest first based on dateCreated
@@ -645,6 +650,44 @@ type SeededIngredientItem = {
   aliases: string[];
 };
 
+// Sanitize ingredient names from seed recipes by removing prep descriptors / parentheticals
+function sanitizeIngredientName(name: string): string {
+  if (!name) return name;
+  let out = name.trim();
+  // Remove parenthetical content entirely
+  out = out.replace(/\([^)]*\)/g, ' ');
+  // Take only the part before first comma if it looks like a prep note follows
+  const firstComma = out.indexOf(',');
+  if (firstComma !== -1) {
+    out = out.slice(0, firstComma);
+  }
+  out = out.replace(/\s+/g, ' ').trim();
+  const DESCRIPTORS = [
+    'finely chopped','roughly chopped','coarsely chopped','chopped','finely sliced','thinly sliced','very thinly sliced','thickly sliced','sliced','finely grated','coarsely grated','grated','diced','minced','crushed','smashed','whisked','peeled','trimmed','pitted','deseeded','ground','lightly crushed','halved','quartered','zest and juice','finely grated zest and juice'
+  ];
+  // Remove trailing descriptor phrases
+  for (const d of DESCRIPTORS) {
+    const re = new RegExp('(?:,?\\s*)' + d.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&') + '$', 'i');
+    if (re.test(out)) {
+      out = out.replace(re, '').trim();
+    }
+  }
+  // Normalize multiple spaces again
+  out = out.replace(/\s+/g, ' ').trim();
+  // Capitalize first letter only if original started uppercase
+  if (/[a-z]/.test(out) && out[0] === out[0].toLowerCase()) {
+    out = out.charAt(0).toUpperCase() + out.slice(1);
+  }
+  return out;
+}
+
+function sanitizeRecipes(recipes: Recipe[]): Recipe[] {
+  return recipes.map(r => ({
+    ...r,
+    ingredients: r.ingredients.map(ing => ({ ...ing, name: sanitizeIngredientName(ing.name) }))
+  }));
+}
+
 function dedupeByName(items: SeededIngredientItem[]): SeededIngredientItem[] {
   const byName = new Map<string, SeededIngredientItem>();
   for (const it of items) {
@@ -656,15 +699,17 @@ function dedupeByName(items: SeededIngredientItem[]): SeededIngredientItem[] {
 
 async function ensureSeededIngredients(seeds: Recipe[]) {
   try {
+  // Sanitize before extracting names so aliases don't include prep notes
+  const sanitized = sanitizeRecipes(seeds);
     const ingredientNames = new Set<string>();
-    for (const r of seeds) {
+  for (const r of sanitized) {
       for (const ing of r.ingredients) {
         const name = (ing.name || '').trim();
         if (name) ingredientNames.add(name);
       }
     }
 
-    const toAdd: SeededIngredientItem[] = Array.from(ingredientNames).map((name) => ({
+  const toAdd: SeededIngredientItem[] = Array.from(ingredientNames).map((name) => ({
       id: 'seed-ing-' + slugify(name),
       name,
       category: 'Seeded',
