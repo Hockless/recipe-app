@@ -204,6 +204,19 @@ export default function HomeScreen() {
             <ThemedText style={styles.actionDescription}>Teams, fixtures & results</ThemedText>
           </ThemedView>
         </TouchableOpacity>
+
+        {/* Weight Tracker Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/weight-tracker')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>⚖️</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <ThemedText type="defaultSemiBold">Weight Tracker</ThemedText>
+            <ThemedText style={styles.actionDescription}>Daily keto progress</ThemedText>
+          </ThemedView>
+        </TouchableOpacity>
       </ThemedView>
     </ParallaxScrollView>
   );

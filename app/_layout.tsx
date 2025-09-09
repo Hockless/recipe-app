@@ -44,6 +44,7 @@ export default function RootLayout() {
   <Stack.Screen name="commute-planner" options={{ headerShown: false }} />
   <Stack.Screen name="my-sports" options={{ headerShown: false }} />
   <Stack.Screen name="weather" options={{ headerShown: false }} />
+  <Stack.Screen name="weight-tracker" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

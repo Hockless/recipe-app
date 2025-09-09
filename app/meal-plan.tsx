@@ -2,8 +2,10 @@ import { BackButton } from '@/components/BackButton';
 import { shared } from '@/styles/theme';
 import { loadPantry, PantryItem, parseAmount, savePantry } from '@/utils/pantry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, Modal, PanResponder, Platform, ScrollView, StyleSheet, ToastAndroid, TouchableOpacity } from 'react-native';
 
@@ -164,6 +166,55 @@ export default function WeeklyTimelineScreen() {
     }
   };
 
+  // Export current week's meal plan recipes (with ingredients) to JSON file and share
+  const exportCurrentWeek = async () => {
+    try {
+      const days = getWeekDays();
+      const dateSet = new Set(days.map(d => formatDate(d)));
+      const weekMeals = mealPlan.filter(m => dateSet.has(m.date));
+      if (!weekMeals.length) {
+        Alert.alert('No Meals', 'No recipes assigned for this week.');
+        return;
+      }
+      const exportRecipes = weekMeals.map(m => {
+        const r = recipes.find(rp => rp.id === m.recipeId);
+        return {
+          date: m.date,
+            title: m.recipeTitle,
+            serves: m.serves || 4,
+            ingredients: r?.ingredients || [],
+            instructions: r?.instructions || ''
+        };
+      }).sort((a,b)=> a.date.localeCompare(b.date));
+      const payload = {
+        generatedAt: new Date().toISOString(),
+        weekStart: formatDate(getStartOfWeek(currentWeek)),
+        count: exportRecipes.length,
+        meals: exportRecipes
+      };
+      const json = JSON.stringify(payload, null, 2);
+      const fileName = `meal-plan-${payload.weekStart}.json`;
+      const fileUri = FileSystem.cacheDirectory + fileName;
+      await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+      if (Platform.OS === 'web') {
+        // Web fallback: create downloadable link
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = fileName; a.click();
+        setTimeout(()=> URL.revokeObjectURL(url), 5000);
+      } else if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Share Weekly Meal Plan' });
+      } else {
+        Alert.alert('Exported', `Saved to: ${fileUri}`);
+      }
+      if (Platform.OS === 'android') ToastAndroid.show('Meal plan exported', ToastAndroid.SHORT);
+    } catch (e) {
+      console.error('Export failed', e);
+      Alert.alert('Export Failed', 'Could not export meal plan.');
+    }
+  };
+
   // New: helpers for rota
   const other = (p: CookPerson): CookPerson => (p === 'Jimmy' ? 'Liddy' : 'Jimmy');
 
@@ -210,6 +261,9 @@ export default function WeeklyTimelineScreen() {
 
     // If we unpaused this day, and we have history, restore order
     try {
+            <TouchableOpacity onPress={exportCurrentWeek} style={styles.exportBtn}>
+              <ThemedText style={styles.exportBtnText}>Export Week</ThemedText>
+            </TouchableOpacity>
       const hist = pauseShiftHistory[dateStr];
       if (hist) {
         // Start from current plan
@@ -905,6 +959,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     opacity: 0.9,
   },
+  exportBtn: { marginLeft: 'auto', backgroundColor: '#2563eb', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
+  exportBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   shoppingListButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 20,
