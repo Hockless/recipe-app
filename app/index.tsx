@@ -14,6 +14,7 @@ export default function HomeScreen() {
   const [receiptCount, setReceiptCount] = useState<number | null>(null);
   // Feature flags
   const SHOW_CALENDAR = false; // toggle on when ready to display the calendar card again
+  const SHOW_SPORTS = false;   // feature flag for My Sports card
 
   useEffect(() => {
     const loadCounts = async () => {
@@ -86,32 +87,26 @@ export default function HomeScreen() {
               <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/add-recipe')}>
                 <ThemedText style={styles.inlinePillText}>Add</ThemedText>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/meal-plan')}>
-                <ThemedText style={styles.inlinePillText}>Meal Plan</ThemedText>
-              </TouchableOpacity>
             </ThemedView>
           </ThemedView>
         </TouchableOpacity>
 
-        {/* Combined Groceries Card (now includes Fridge & Ingredients) */}
+        {/* Grocery Tools (Receipts, Fridge, Ingredients) */}
         <TouchableOpacity
           style={[styles.actionButton, styles.groupCard]}
-          onPress={() => router.push('/shopping-list')}
+          onPress={() => router.push('/fridge')}
           activeOpacity={0.85}
         >
-          <ThemedText style={styles.actionEmoji}>🛍️</ThemedText>
+          <ThemedText style={styles.actionEmoji}>🥬</ThemedText>
           <ThemedView style={styles.actionTextContainer}>
             <View style={styles.titleRow}>
-              <ThemedText type="defaultSemiBold">Groceries</ThemedText>
+              <ThemedText type="defaultSemiBold">Kitchen & Pantry</ThemedText>
               {receiptCount !== null && (
                 <View style={[styles.badge, styles.badgeNeutral]}><ThemedText style={styles.badgeText}>{receiptCount}</ThemedText></View>
               )}
             </View>
-            <ThemedText style={styles.actionDescription}>Shopping, receipts & pantry</ThemedText>
+            <ThemedText style={styles.actionDescription}>Receipts, fridge & ingredients</ThemedText>
             <ThemedView style={styles.inlineActions}>
-              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/shopping-list')}>
-                <ThemedText style={styles.inlinePillText}>List</ThemedText>
-              </TouchableOpacity>
               <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/receipts')}>
                 <ThemedText style={styles.inlinePillText}>Receipts</ThemedText>
               </TouchableOpacity>
@@ -122,6 +117,32 @@ export default function HomeScreen() {
                 <ThemedText style={styles.inlinePillText}>Ingredients</ThemedText>
               </TouchableOpacity>
             </ThemedView>
+          </ThemedView>
+        </TouchableOpacity>
+
+        {/* New: Dedicated Meal Plan Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/meal-plan')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>📅</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <ThemedText type="defaultSemiBold">Meal Plan</ThemedText>
+            <ThemedText style={styles.actionDescription}>Weekly rota & randomiser</ThemedText>
+          </ThemedView>
+        </TouchableOpacity>
+
+        {/* New: Dedicated Shopping List Card */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/shopping-list')}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.actionEmoji}>🛒</ThemedText>
+          <ThemedView style={styles.actionTextContainer}>
+            <ThemedText type="defaultSemiBold">Shopping List</ThemedText>
+            <ThemedText style={styles.actionDescription}>Items to buy this week</ThemedText>
           </ThemedView>
         </TouchableOpacity>
 
@@ -192,18 +213,20 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
-        {/* My Sports Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/my-sports')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>⚽</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">My Sports</ThemedText>
-            <ThemedText style={styles.actionDescription}>Teams, fixtures & results</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
+        {/* My Sports Card (hidden via SHOW_SPORTS flag) */}
+        {SHOW_SPORTS && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/my-sports')}
+            activeOpacity={0.85}
+          >
+            <ThemedText style={styles.actionEmoji}>⚽</ThemedText>
+            <ThemedView style={styles.actionTextContainer}>
+              <ThemedText type="defaultSemiBold">My Sports</ThemedText>
+              <ThemedText style={styles.actionDescription}>Teams, fixtures & results</ThemedText>
+            </ThemedView>
+          </TouchableOpacity>
+        )}
 
         {/* Weight Tracker Card */}
         <TouchableOpacity

@@ -1,9 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { BackButton } from '@/components/BackButton';
 import { ThemedText } from '@/components/ThemedText';
@@ -63,8 +61,7 @@ export default function WeightTrackerScreen() {
   const [sex, setSex] = useState<'male' | 'female' | ''>('');
   const [activity, setActivity] = useState<'sedentary' | 'light' | 'moderate' | 'active' | 'very'>('sedentary');
   const [goalWeight, setGoalWeight] = useState(''); // in display unit
-  const [photoViewerUri, setPhotoViewerUri] = useState<string | null>(null);
-  const [picking, setPicking] = useState(false);
+  // Photo features removed per request
   const scrollRef = useRef<ScrollView>(null);
   // Removed native date picker (module missing in build); manual date entry only
 
@@ -154,45 +151,7 @@ export default function WeightTrackerScreen() {
     return 0;
   };
 
-  const pickEditorPhoto = async () => {
-    if (picking) return;
-    try {
-      setPicking(true);
-      // Ask permission (native); web will auto allow
-      if (Platform.OS !== 'web') {
-        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (perm.status !== 'granted') {
-          Alert.alert('Permission needed', 'Media library permission is required.');
-          return;
-        }
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: true,
-        aspect: [3,4],
-      });
-      if (!result.canceled && result.assets?.length) {
-        const uri = result.assets[0].uri;
-        const idx = await ensureEditorEntry();
-        const next = [...entries];
-        next[idx] = { ...next[idx], photoUri: uri };
-        await saveEntries(next);
-      }
-    } catch (e) {
-      console.warn('Failed picking image', e);
-    } finally {
-      setPicking(false);
-    }
-  };
-
-  const removeEditorPhoto = async () => {
-    const idx = entries.findIndex(e => e.date === editorDate);
-    if (idx < 0) return;
-    const next = [...entries];
-    delete next[idx].photoUri;
-    await saveEntries(next);
-  };
+  // Image picking & removal logic removed.
 
   const removeEntry = async (id: string) => {
     Alert.alert('Delete Entry', 'Remove this weight entry?', [
@@ -465,26 +424,7 @@ export default function WeightTrackerScreen() {
             />
             <ThemedText style={styles.unitLabel}>{unit}</ThemedText>
           </View>
-          {/* Photo controls */}
-          <View style={[styles.row, { marginTop: 12 }]}> 
-            {entries.find(e => e.date === editorDate)?.photoUri ? (
-              <View style={styles.photoRow}> 
-                <TouchableOpacity onPress={() => { const p = entries.find(e => e.date === editorDate)?.photoUri; if (p) setPhotoViewerUri(p); }}>
-                  <Image source={entries.find(e => e.date === editorDate)?.photoUri} style={styles.thumb} contentFit="cover" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.photoBtn} onPress={pickEditorPhoto}>
-                  <ThemedText style={styles.photoBtnText}>Replace</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.photoBtn, styles.photoBtnDanger]} onPress={removeEditorPhoto}>
-                  <ThemedText style={styles.photoBtnDangerText}>Remove</ThemedText>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.addPhotoBtn} onPress={pickEditorPhoto} activeOpacity={0.85}>
-                <ThemedText style={styles.addPhotoBtnText}>{picking ? 'Opening…' : 'Add Selfie'}</ThemedText>
-              </TouchableOpacity>
-            )}
-          </View>
+          {/* Photo controls removed */}
           <TextInput
             style={[styles.input, styles.noteInput]}
             placeholder="Optional note (fasting, workout, etc.)"
@@ -716,27 +656,14 @@ export default function WeightTrackerScreen() {
                 </View>
                 <ThemedText style={styles.entryWeight}>{e.weight.toFixed(1)} {unit}</ThemedText>
                 {e.note && <ThemedText style={styles.entryNote}>{e.note}</ThemedText>}
-                {e.photoUri && (
-                  <TouchableOpacity onPress={() => { if (e.photoUri) setPhotoViewerUri(e.photoUri); }} style={{marginTop:6, alignSelf:'flex-start'}}>
-                    <Image source={e.photoUri} style={styles.historyThumb} contentFit="cover" />
-                  </TouchableOpacity>
-                )}
+                {/* Photo thumbnail removed */}
               </View>
             </View>
           ))}
         </ThemedView>
       </ThemedView>
 
-      {/* Fullscreen photo viewer */}
-      <Modal visible={!!photoViewerUri} transparent animationType="fade" onRequestClose={() => setPhotoViewerUri(null)}>
-        <View style={styles.viewerBackdrop}>
-          <TouchableOpacity style={styles.viewerBackdrop} activeOpacity={1} onPress={() => setPhotoViewerUri(null)}>
-            {photoViewerUri && (
-              <Image source={photoViewerUri} style={styles.viewerImage} contentFit="contain" />
-            )}
-          </TouchableOpacity>
-        </View>
-      </Modal>
+  {/* Photo viewer removed */}
     </ScrollView>
   );
 }

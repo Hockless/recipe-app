@@ -5,7 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, Modal, PanResponder, Platform, ScrollView, StyleSheet, ToastAndroid, TouchableOpacity } from 'react-native';
 
@@ -60,6 +59,9 @@ export default function WeeklyTimelineScreen() {
   const [pantry, setPantry] = useState<PantryItem[]>([]);
   // Track pause-shift history to restore on unpause of the same day
   const [pauseShiftHistory, setPauseShiftHistory] = useState<Record<string, { before: MealPlan[]; after: MealPlan[] }>>({});
+  // Shopping list generation modal state
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generateFromDate, setGenerateFromDate] = useState<string | null>(null);
 
   // Get start of week (Monday)
   const getStartOfWeek = (date: Date) => {
@@ -166,6 +168,72 @@ export default function WeeklyTimelineScreen() {
     }
   };
 
+  const openGenerateModal = () => {
+    const todayStr = formatDate(new Date());
+    const weekDates = getWeekDays().map(d => formatDate(d));
+    setGenerateFromDate(weekDates.includes(todayStr) ? todayStr : weekDates[0]);
+    setShowGenerateModal(true);
+  };
+
+  // Generate a fresh shopping list for the currently visible week only from chosen start date.
+  const regenerateShoppingListForWeek = async () => {
+    if (!generateFromDate) return;
+    try {
+      const weekDates = getWeekDays().map(d => formatDate(d));
+      const weekSet = new Set(weekDates);
+      const weekMeals = mealPlan.filter(m => weekSet.has(m.date));
+      if (weekMeals.length === 0) {
+        Alert.alert('No Meals', 'Add some meals to this week first.');
+        return;
+      }
+      // Load recipes (ensure we have latest)
+      const storedRecipes = await AsyncStorage.getItem('recipes');
+      const parsedRecipes: Recipe[] = storedRecipes ? JSON.parse(storedRecipes) : recipes;
+
+      // Build ingredient aggregation similar to shopping-list screen (simplified: no fridge/pantry logic here)
+      interface TempItem { name: string; amounts: string[]; recipes: string[]; checked: boolean; isCustom?: boolean }
+      const temp: Record<string, TempItem> = {};
+  weekMeals.filter(m => m.date >= generateFromDate).forEach(meal => {
+        const r = parsedRecipes.find(rr => rr.id === meal.recipeId);
+        if (!r) return;
+        const baseServes = typeof r.serves === 'number' ? r.serves : 4;
+        const targetServes = typeof meal.serves === 'number' ? meal.serves : 4;
+        const factor = baseServes > 0 ? (targetServes / baseServes) : 1;
+        r.ingredients.forEach(ing => {
+          const key = ing.name.trim();
+          if (!key) return;
+          // Very naive amount scaling if ends with a number + unit separated by space (leave complex strings as-is)
+          let amt = ing.amount || '';
+          if (amt) {
+            const numMatch = amt.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+            if (numMatch) {
+              const num = parseFloat(numMatch[1]) * factor;
+              const unit = numMatch[2];
+              amt = `${num % 1 === 0 ? num : num.toFixed(2)} ${unit}`.trim();
+            }
+          }
+          if (temp[key]) {
+            if (amt && !temp[key].amounts.includes(amt)) temp[key].amounts.push(amt);
+            if (!temp[key].recipes.includes(r.title)) temp[key].recipes.push(r.title);
+          } else {
+            temp[key] = { name: key, amounts: amt ? [amt] : [], recipes: [r.title], checked: false };
+          }
+        });
+      });
+
+      const finalList = Object.values(temp).sort((a,b) => a.name.localeCompare(b.name));
+  await AsyncStorage.setItem('shoppingListChecked', JSON.stringify({}));
+  await AsyncStorage.setItem('customShoppingItems', JSON.stringify([]));
+  await AsyncStorage.setItem('shoppingListFromDate', generateFromDate);
+  Alert.alert('Shopping List Updated', `Open Shopping List to view items from ${generateFromDate} onwards.`);
+      if (Platform.OS === 'android') ToastAndroid.show('Shopping list regenerated', ToastAndroid.SHORT);
+  setShowGenerateModal(false);
+    } catch (e) {
+      console.error('Failed to regenerate shopping list', e);
+      Alert.alert('Error', 'Could not generate new shopping list.');
+    }
+  };
+
   // Export current week's meal plan recipes (with ingredients) to JSON file and share
   const exportCurrentWeek = async () => {
     try {
@@ -203,10 +271,26 @@ export default function WeeklyTimelineScreen() {
         const a = document.createElement('a');
         a.href = url; a.download = fileName; a.click();
         setTimeout(()=> URL.revokeObjectURL(url), 5000);
-      } else if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Share Weekly Meal Plan' });
       } else {
-        Alert.alert('Exported', `Saved to: ${fileUri}`);
+        // Dynamic import of expo-sharing to avoid native crash if dev client not rebuilt yet
+        let sharing: any = null;
+        try { sharing = await import('expo-sharing'); } catch (err: any) {
+          console.warn('expo-sharing dynamic import failed (likely not installed in this build):', err?.message);
+        }
+        if (sharing && typeof sharing.isAvailableAsync === 'function') {
+          try {
+            if (await sharing.isAvailableAsync()) {
+              await sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Share Weekly Meal Plan' });
+            } else {
+              Alert.alert('Sharing Unavailable', `Saved to: ${fileUri}`);
+            }
+          } catch (shareErr) {
+            console.warn('Share attempt failed, fallback to file path', shareErr);
+            Alert.alert('Exported', `Saved to: ${fileUri}`);
+          }
+        } else {
+          Alert.alert('Sharing Module Missing', `Saved to: ${fileUri}\nRebuild the app (expo run:android / ios) to enable native sharing.`);
+        }
       }
       if (Platform.OS === 'android') ToastAndroid.show('Meal plan exported', ToastAndroid.SHORT);
     } catch (e) {
@@ -260,10 +344,7 @@ export default function WeeklyTimelineScreen() {
     }
 
     // If we unpaused this day, and we have history, restore order
-    try {
-            <TouchableOpacity onPress={exportCurrentWeek} style={styles.exportBtn}>
-              <ThemedText style={styles.exportBtnText}>Export Week</ThemedText>
-            </TouchableOpacity>
+  try {
       const hist = pauseShiftHistory[dateStr];
       if (hist) {
         // Start from current plan
@@ -681,12 +762,21 @@ export default function WeeklyTimelineScreen() {
         <BackButton onPress={handleBack} />
         <ThemedText type="title" style={shared.screenTitle}>Weekly Meal Plan</ThemedText>
         <ThemedText style={styles.subtitle}>Plan your recipes for the week</ThemedText>
-        
+        {/* Export button */}
+        <TouchableOpacity onPress={exportCurrentWeek} style={styles.exportBtn}>
+          <ThemedText style={styles.exportBtnText}>Export Week</ThemedText>
+        </TouchableOpacity>
         <TouchableOpacity 
           style={styles.shoppingListButton}
           onPress={() => router.push('/shopping-list')}
         >
           <ThemedText style={styles.shoppingListButtonText}>🛒 View Shopping List</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.generateListButton}
+          onPress={openGenerateModal}
+        >
+          <ThemedText style={styles.generateListButtonText}>🔄 Generate New Shopping List</ThemedText>
         </TouchableOpacity>
       </ThemedView>
 
@@ -948,6 +1038,49 @@ export default function WeeklyTimelineScreen() {
           </ScrollView>
         </ThemedView>
       </Modal>
+      {/* Generate Shopping List Start Date Modal */}
+      <Modal
+        visible={showGenerateModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowGenerateModal(false)}
+      >
+        <ThemedView style={styles.genModalOverlay}>
+          <ThemedView style={styles.genModalCard}>
+            <ThemedText type="subtitle" style={styles.genModalTitle}>Generate New Shopping List</ThemedText>
+            <ThemedText style={styles.genModalSubtitle}>Select the date from which to include meals (within this week).</ThemedText>
+            <ScrollView style={{ maxHeight: 260, width: '100%' }}>
+              {getWeekDays().map(d => {
+                const dateStr = formatDate(d);
+                const selected = dateStr === generateFromDate;
+                return (
+                  <TouchableOpacity
+                    key={dateStr}
+                    style={[styles.genDateRow, selected && styles.genDateRowActive]}
+                    onPress={() => setGenerateFromDate(dateStr)}
+                  >
+                    <ThemedText style={[styles.genDateText, selected && styles.genDateTextActive]}>
+                      {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <ThemedView style={styles.genActionsRow}>
+              <TouchableOpacity style={styles.genCancelBtn} onPress={() => setShowGenerateModal(false)}>
+                <ThemedText style={styles.genCancelText}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.genConfirmBtn, !generateFromDate && { opacity: 0.5 }]}
+                disabled={!generateFromDate}
+                onPress={regenerateShoppingListForWeek}
+              >
+                <ThemedText style={styles.genConfirmText}>Generate</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
       </ScrollView>
     </ThemedView>
   );
@@ -974,6 +1107,51 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  generateListButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 22,
+    alignSelf: 'center',
+    marginTop: 12,
+  },
+  generateListButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  // Generate list modal styles
+  genModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  genModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 20,
+    width: '100%',
+    maxWidth: 420,
+  },
+  genModalTitle: { color: '#222', marginBottom: 4 },
+  genModalSubtitle: { color: '#555', fontSize: 13, lineHeight: 18, marginBottom: 12 },
+  genDateRow: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+    marginBottom: 8,
+  },
+  genDateRowActive: { backgroundColor: '#2563eb' },
+  genDateText: { color: '#374151', fontSize: 15 },
+  genDateTextActive: { color: '#fff', fontWeight: '600' },
+  genActionsRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 6 },
+  genCancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
+  genCancelText: { color: '#555', fontSize: 14 },
+  genConfirmBtn: { backgroundColor: '#FF6B6B', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
+  genConfirmText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   // summary card styles removed
   randomPlanContainer: {
     alignItems: 'center',

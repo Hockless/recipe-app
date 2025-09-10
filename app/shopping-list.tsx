@@ -85,6 +85,8 @@ export default function ShoppingListScreen() {
   // Hoist category select
   const [hoistCategory, setHoistCategory] = useState<string | 'None'>('None');
   const [showHoistPicker, setShowHoistPicker] = useState(false);
+  // New: filter toggle to hide checked items
+  const [showUncheckedOnly, setShowUncheckedOnly] = useState(false);
 
   // Helpers: canonicalization
   const stripParentheticals = (s: string) => s.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
@@ -279,6 +281,11 @@ export default function ShoppingListScreen() {
     // Generate current shopping list
     const ingredientMap: { [key: string]: ShoppingItem } = {};
     const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+    // If user forced regeneration with a chosen start date, respect it (cannot be earlier than today)
+    let fromDate = today;
+    if ((global as any).__forceShoppingListFromDateCache) {
+      fromDate = (global as any).__forceShoppingListFromDateCache;
+    }
 
     // New: build a normalized set of ingredients user already has
   const fridgeSet = new Set(fridgeItems.map(i => baseNormalize(i.name || '')).filter(Boolean) as string[]);
@@ -288,7 +295,7 @@ export default function ShoppingListScreen() {
 
     // Add items from meal plan (include today and future meals)
     if (recipes.length > 0 && mealPlan.length > 0) {
-      const futureMeals = mealPlan.filter(meal => meal.date >= today);
+  const futureMeals = mealPlan.filter(meal => meal.date >= fromDate);
       
   futureMeals.forEach(meal => {
         const recipe = recipes.find(r => r.id === meal.recipeId);
@@ -625,6 +632,13 @@ export default function ShoppingListScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+      // Load persisted from-date (done separately to avoid race) and cache globally for this session
+      (async () => {
+        try {
+          const fd = await AsyncStorage.getItem('shoppingListFromDate');
+          if (fd) (global as any).__forceShoppingListFromDateCache = fd;
+        } catch {}
+      })();
     }, [])
   );
 
@@ -683,7 +697,12 @@ export default function ShoppingListScreen() {
     return 'Other';
   };
 
-  const grouped = shoppingList.reduce<Record<string, typeof shoppingList>>((acc, item) => {
+  // Apply unchecked filter if enabled
+  const visibleList = showUncheckedOnly
+    ? shoppingList.filter(i => !checkedItems[i.name.toLowerCase().trim()])
+    : shoppingList;
+
+  const grouped = visibleList.reduce<Record<string, typeof shoppingList>>((acc, item) => {
     const cat = categorizeItem(item.name);
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(item);
@@ -804,6 +823,23 @@ export default function ShoppingListScreen() {
                 <TouchableOpacity style={styles.hoistClear} onPress={() => setHoistCategory('None')}>
                   <ThemedText style={styles.hoistClearText}>Reset</ThemedText>
                 </TouchableOpacity>
+              )}
+            </ThemedView>
+
+            {/* Unchecked filter toggle */}
+            <ThemedView style={styles.filterRow}> 
+              <TouchableOpacity
+                style={[styles.filterToggle, showUncheckedOnly && styles.filterToggleActive]}
+                onPress={() => setShowUncheckedOnly(v => !v)}
+              >
+                <ThemedText style={[styles.filterToggleText, showUncheckedOnly && styles.filterToggleTextActive]}>
+                  {showUncheckedOnly ? 'Showing unchecked only' : 'Hide checked items'}
+                </ThemedText>
+              </TouchableOpacity>
+              {showUncheckedOnly && (
+                <ThemedText style={styles.filterMeta}>
+                  {visibleList.length} left • {shoppingList.length - visibleList.length} hidden
+                </ThemedText>
               )}
             </ThemedView>
 
@@ -1514,5 +1550,39 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // New unchecked filter styles
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  filterToggle: {
+    backgroundColor: '#eee',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  filterToggleActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  filterToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+  },
+  filterToggleTextActive: {
+    color: '#fff',
+  },
+  filterMeta: {
+    fontSize: 12,
+    color: '#555',
+    fontStyle: 'italic',
+    flexShrink: 1,
   },
 });

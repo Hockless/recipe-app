@@ -3,7 +3,7 @@ import { shared } from '@/styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -30,6 +30,8 @@ export default function BrowseRecipesScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTagFilter, setActiveTagFilter] = useState<string>('All'); // 'All' | 'Keto' | 'Mediterranean'
+  // New: search query
+  const [searchQuery, setSearchQuery] = useState('');
 
   // New: Back handler with web/no-history fallback
   const handleBack = () => {
@@ -153,9 +155,19 @@ export default function BrowseRecipesScreen() {
     });
   };
 
-  const filteredRecipes = activeTagFilter === 'All'
+  // Tag filter first
+  const tagFiltered = activeTagFilter === 'All'
     ? recipes
     : recipes.filter(r => r.tags && r.tags.includes(activeTagFilter));
+
+  // Apply search (case-insensitive) across title + ingredient names
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredRecipes = normalizedQuery
+    ? tagFiltered.filter(r => {
+        if (r.title.toLowerCase().includes(normalizedQuery)) return true;
+        return r.ingredients.some(ing => ing.name.toLowerCase().includes(normalizedQuery));
+      })
+    : tagFiltered;
 
   return (
     <ScrollView 
@@ -182,6 +194,34 @@ export default function BrowseRecipesScreen() {
       </ThemedView>
 
       <ThemedView style={styles.content}>
+        {/* Search area */}
+        <View style={styles.searchFieldContainer}>
+          <View style={styles.searchFieldInner}>
+            <View style={styles.searchIconHolder}>
+              <ThemedText style={styles.searchIcon}>🔍</ThemedText>
+            </View>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search recipes or ingredients..."
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode={Platform.OS === 'ios' ? 'while-editing' : 'never'}
+              accessibilityLabel="Search recipes"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton} accessibilityLabel="Clear search">
+                <ThemedText style={styles.clearButtonText}>✕</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
+          {searchQuery.length > 0 && (
+            <ThemedText style={styles.searchMeta}>{filteredRecipes.length} match{filteredRecipes.length !== 1 ? 'es' : ''}</ThemedText>
+          )}
+        </View>
         <ThemedView style={styles.filterBar}>
           {['All','Keto','Mediterranean'].map(tag => {
             const active = activeTagFilter === tag;
@@ -347,6 +387,49 @@ const styles = StyleSheet.create({
   content: {
     paddingVertical: 20,
     paddingHorizontal: Platform.OS === 'android' ? 12 : 20,
+  },
+  // Search styles
+  searchFieldContainer: {
+    marginBottom: 18,
+  },
+  searchFieldInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#e2e2e2',
+  },
+  searchIconHolder: {
+    marginRight: 8,
+  },
+  searchIcon: {
+    fontSize: 16,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 4,
+    fontSize: 15,
+    color: '#222',
+  },
+  clearButton: {
+    marginLeft: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  clearButtonText: {
+    fontSize: 14,
+    color: '#444',
+  },
+  searchMeta: {
+    marginTop: 6,
+    fontSize: 11,
+    color: '#555',
+    paddingLeft: 4,
   },
   filterBar: {
     flexDirection: 'row',
