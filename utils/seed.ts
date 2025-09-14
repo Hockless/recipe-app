@@ -18,12 +18,12 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
   { id: 'i-10', name: 'Rump Steaks', amount: '2' },
     { id: 'i-11', name: 'Fish Sauce', amount: '2 tsp' },
   { id: 'i-12', name: 'Lime Juice', amount: '1' },
-    { id: 'i-13', name: 'Courgette', amount: '200 g' },
+    { id: 'i-13', name: 'Courgette', amount: '2' },
     { id: 'i-14', name: 'Beansprouts', amount: '40 g' },
   { id: 'i-15', name: 'Spring Onions', amount: '2' },
   { id: 'i-16', name: 'Mint', amount: '5 g' },
   { id: 'i-17', name: 'Coriander', amount: '5 g' },
-  { id: 'i-18', name: 'Red Chilli', amount: '1' },
+  { id: 'i-18', name: 'Chilli', amount: '1' },
     ],
     instructions: 'Simmer spices in stock 10 min to infuse, then strain. Sear sliced steak quickly in a little lard. Add aromatics, fish sauce and lime to the hot broth, pour over courgette noodles and top with steak and fresh garnishes.',
     dateCreated: '2025-01-02T09:00:00.000Z',
@@ -57,8 +57,8 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
     id: 'seed-fresh-green-chicken-curry',
     title: 'Fresh Green Chicken Curry',
     ingredients: [
-  { id: 'i-1', name: 'Green Chillies', amount: '4' },
-  { id: 'i-2', name: 'Onion', amount: '1/2 each' },
+  { id: 'i-1', name: 'Chilli', amount: '4' },
+  { id: 'i-2', name: 'Onion', amount: '1/2' },
   { id: 'i-3', name: 'Ginger', amount: '20 g' },
   { id: 'i-4', name: 'Garlic', amount: '2' },
   { id: 'i-5', name: 'Lemongrass', amount: '1' },
@@ -72,7 +72,7 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
   { id: 'i-13', name: 'Spring Onions', amount: '4' },
   { id: 'i-14', name: 'Coconut Milk', amount: '400 ml' },
   { id: 'i-15', name: 'Kaffir Lime Leaves', amount: '2' },
-  { id: 'i-16', name: 'Red Chilli', amount: '1' },
+  { id: 'i-16', name: 'Chilli', amount: '1' },
     ],
     instructions: 'Blitz paste ingredients, fry in coconut oil. Add chicken & spring onions, then coconut milk, kaffir lime leaves and lime. Simmer until cooked, season, finish with chilli & coriander.',
     dateCreated: '2025-01-02T11:00:00.000Z',
@@ -93,12 +93,12 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
   { id: 'i-7', name: 'Cayenne Pepper', amount: '1 tsp' },
   { id: 'i-8', name: 'Red Wine Vinegar', amount: '1 tbsp' },
   { id: 'i-9', name: 'Minced Beef', amount: '650 g' },
-  { id: 'i-10', name: 'Chopped Tomatoes', amount: '400 g' },
+  { id: 'i-10', name: 'Chopped Tomatoes Can', amount: '400 g' },
   { id: 'i-11', name: 'Beef Stock', amount: '300 ml' },
   { id: 'i-12', name: 'Soured Cream', amount: '100 g' },
   { id: 'i-13', name: 'Cheddar', amount: '60 g' },
   { id: 'i-14', name: 'Parsley', amount: '10 g' },
-  { id: 'i-15', name: 'Red Chillies', amount: '2' },
+  { id: 'i-15', name: 'Chilli', amount: '2' },
     ],
     instructions: 'Brown vegetables in lard, add spices & vinegar. Fry beef, add tomatoes & stock, simmer until thick; season and serve with toppings.',
     dateCreated: '2025-01-02T12:00:00.000Z',
@@ -148,7 +148,7 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
     { id: 'i-12', name: 'Minced Beef', amount: '500 g' },
   { id: 'i-13', name: 'Dried Thyme', amount: '0.5 tsp' },
     { id: 'i-14', name: 'Cayenne Pepper', amount: '2 tsp' },
-    { id: 'i-15', name: 'Chopped Tomatoes', amount: '200 g' },
+  { id: 'i-15', name: 'Chopped Tomatoes Can', amount: '200 g' },
     { id: 'i-16', name: 'Cheddar', amount: '50 g' },
   { id: 'i-17', name: 'Parsley', amount: '5 g' },
     ],
@@ -337,7 +337,7 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-3', name: 'Onion', amount: '1' },
   { id: 'i-4', name: 'Bacon/Pancetta', amount: '100 g' },
   { id: 'i-5', name: 'Cannellini Beans', amount: '400 g' },
-  { id: 'i-6', name: 'Tomatoes', amount: '400 g' },
+  { id: 'i-6', name: 'Chopped Tomatoes Can', amount: '400 g' },
   { id: 'i-7', name: 'Mixed Herbs', amount: '1 tsp' },
   { id: 'i-8', name: 'Parsley', amount: '15 g' },
     ],
@@ -480,7 +480,7 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-3', name: 'Olive Oil', amount: '2 tbsp' },
   { id: 'i-4', name: 'Onion', amount: '1' },
   { id: 'i-5', name: 'Chorizo', amount: '50 g' },
-  { id: 'i-6', name: 'Garlic', amount: '1 bulb' },
+  { id: 'i-6', name: 'Garlic', amount: '5' },
   { id: 'i-7', name: 'White Beans', amount: '400 g' },
   { id: 'i-8', name: 'Thyme', amount: '0.25 tsp' },
   { id: 'i-9', name: 'Tenderstem Broccoli', amount: '200 g' },
@@ -572,7 +572,7 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-5', name: 'Coriander', amount: '0.5 tsp' },
   { id: 'i-6', name: 'Cinnamon', amount: '0.25 tsp' },
   { id: 'i-7', name: 'Pepper', amount: '1' },
-  { id: 'i-8', name: 'Tomatoes', amount: '400 g' },
+  { id: 'i-8', name: 'Chopped Tomatoes Can', amount: '400 g' },
   { id: 'i-9', name: 'Chickpeas', amount: '210 g' },
   { id: 'i-10', name: 'Apricots', amount: '4' },
   { id: 'i-11', name: 'Chicken Stock Cube', amount: '1' },
@@ -591,7 +591,7 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-3', name: 'Olive Oil', amount: '2 tbsp' },
   { id: 'i-4', name: 'Onion', amount: '1' },
   { id: 'i-5', name: 'Garlic', amount: '2' },
-  { id: 'i-6', name: 'Tomato', amount: '400 g' },
+  { id: 'i-6', name: 'Chopped Tomatoes Can', amount: '400 g' },
   { id: 'i-7', name: 'Oregano', amount: '1 tsp' },
   { id: 'i-8', name: 'Spinach', amount: '200 g' },
   { id: 'i-9', name: 'Parmesan', amount: '25 g' },
@@ -679,7 +679,7 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-4', name: 'Garlic', amount: '2' },
   { id: 'i-5', name: 'Cumin', amount: '1 tsp' },
   { id: 'i-6', name: 'Paprika', amount: '0.5 tsp' },
-  { id: 'i-7', name: 'Tomato Can', amount: '400 g' },
+  { id: 'i-7', name: 'Chopped Tomatoes Can', amount: '400 g' },
   { id: 'i-8', name: 'Tomato Puree', amount: '1 tbsp' },
   { id: 'i-9', name: 'Egg', amount: '4' },
   { id: 'i-10', name: 'Coriander', amount: '5 g' },
@@ -714,7 +714,7 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-4', name: 'Beef Mince', amount: '250 g' },
   { id: 'i-5', name: 'Black Beans', amount: '400 g' },
   { id: 'i-6', name: 'Fajita Seasoning', amount: '2 tbsp' },
-  { id: 'i-7', name: 'Tomato Can', amount: '400 g' },
+  { id: 'i-7', name: 'Chopped Tomatoes Can', amount: '400 g' },
   { id: 'i-8', name: 'Jalapeño', amount: '2 tbsp' },
   { id: 'i-9', name: 'Cheddar', amount: '120 g' },
   { id: 'i-10', name: 'Greek Yoghurt', amount: '4 tbsp' },
@@ -749,10 +749,13 @@ export async function ensureSeeded(targetVersion: number) {
       return;
     }
 
-    // Perform upgrade: just merge seeds (no filtering / tagging / serves injection)
+  // Perform upgrade: just merge seeds (no filtering / tagging / serves injection)
     const merged = mergeSeeds(existingRecipes, SEEDED_RECIPES);
     await AsyncStorage.setItem('recipes', JSON.stringify(merged));
     await AsyncStorage.setItem(SEED_VERSION_KEY, String(targetVersion));
+  // IMPORTANT: Replace seeded ingredients on upgrade to avoid stale entries lingering
+  // (previously we merged and existing values won). Clearing ensures a clean set.
+  await AsyncStorage.removeItem('seededIngredients');
   await ensureSeededIngredients([...(SEEDED_RECIPES as Recipe[]), ...EXTRA_SEEDED_RECIPES]);
   } catch (e) {
     // Fail silently; app will just show empty state
@@ -812,12 +815,9 @@ async function ensureSeededIngredients(seeds: Recipe[]) {
       aliases: [name.toLowerCase()],
     }));
 
-    const existingStr = await AsyncStorage.getItem('seededIngredients');
-    const existing: SeededIngredientItem[] = existingStr ? JSON.parse(existingStr) : [];
-
-    // Merge, preferring existing entries to keep any manual changes/extensions
-    const merged = dedupeByName([...existing, ...toAdd]);
-    await AsyncStorage.setItem('seededIngredients', JSON.stringify(merged));
+  // Replace the stored list to avoid lingering stale entries from previous seeds.
+  const replaced = dedupeByName(toAdd);
+  await AsyncStorage.setItem('seededIngredients', JSON.stringify(replaced));
   } catch {
     // ignore
   }

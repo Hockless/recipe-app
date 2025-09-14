@@ -17,7 +17,7 @@ export default function RootLayout() {
   useEffect(() => {
     // Bump this number when adding new built-in recipes
   // Bumped from 5 to 6 to force reseeding after ingredient/name updates
-  void ensureSeeded(6);
+  void ensureSeeded(7);
   // Set up daily 7am clothing guide
   void initDailyClothingNotifications();
   }, []);
