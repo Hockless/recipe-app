@@ -3,6 +3,7 @@ import { initDailyClothingNotifications } from '@/utils/weatherNotifier';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -17,10 +18,18 @@ export default function RootLayout() {
   useEffect(() => {
     // Bump this number when adding new built-in recipes
   // Bumped from 5 to 6 to force reseeding after ingredient/name updates
-  void ensureSeeded(7);
+  // Bumped to 9 to add Keto tags to recipes
+  void SplashScreen.preventAutoHideAsync();
+  void ensureSeeded(9);
   // Set up daily 7am clothing guide
   void initDailyClothingNotifications();
   }, []);
+
+  useEffect(() => {
+    if (loaded) {
+      void SplashScreen.hideAsync();
+    }
+  }, [loaded]);
 
   if (!loaded) {
     // Async font loading only occurs in development.

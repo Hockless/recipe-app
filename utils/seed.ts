@@ -37,15 +37,14 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
     ingredients: [
   { id: 'i-1', name: 'Chicken Thighs', amount: '6' },
   { id: 'i-2', name: 'Cauliflower Florets', amount: '600 g' },
-  { id: 'i-3', name: 'Oregano', amount: '1 tsp' },
+  { id: 'i-3', name: 'Dried Oregano', amount: '1 tsp' },
   { id: 'i-4', name: 'Garlic', amount: '2' },
-  { id: 'i-5', name: 'Lemon', amount: '2' },
+  { id: 'i-5', name: 'Lemon', amount: '3' },
   { id: 'i-6', name: 'Cherry Tomatoes', amount: '100 g' },
   { id: 'i-7', name: 'Black Olives', amount: '50 g' },
   { id: 'i-8', name: 'Butter', amount: '30 g' },
-  { id: 'i-9', name: 'Oregano', amount: '5 g' },
+  { id: 'i-9', name: 'Fresh Oregano', amount: '5 g' },
   { id: 'i-10', name: 'Parsley', amount: '5 g' },
-  { id: 'i-11', name: 'Lemon', amount: '1' },
     ],
     instructions: 'Heat oven to 200°C/180°C fan. Season chicken, roast over cauliflower, garlic, tomatoes and olives with butter, lemon juice and zest until chicken crisp and cauliflower caramelised. Finish with herbs, remaining zest and a pinch of salt flakes.',
     dateCreated: '2025-01-02T10:00:00.000Z',
@@ -85,7 +84,7 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
     title: 'Chilli con Carne (Keto)',
     ingredients: [
   { id: 'i-1', name: 'Onion', amount: '0.5' },
-  { id: 'i-2', name: 'Pepper', amount: '1' },
+  { id: 'i-2', name: 'Bell Pepper', amount: '1' },
   { id: 'i-3', name: 'Mushrooms', amount: '100 g' },
   { id: 'i-4', name: 'Garlic', amount: '3' },
   { id: 'i-5', name: 'Ground Cumin', amount: '2 tbsp' },
@@ -163,13 +162,12 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
     title: 'Rib-eye Steaks with Chimichurri',
     ingredients: [
   { id: 'i-1', name: 'Rib Eye Steaks', amount: '6' },
-  { id: 'i-2', name: 'Dried Oregano', amount: '0.5 tsp' },
-    { id: 'i-5', name: 'Parsley', amount: '15 g' },
-    { id: 'i-6', name: 'Fresh Oregano', amount: '1.5 tbsp' },
-  { id: 'i-7', name: 'Garlic', amount: '2' },
-    { id: 'i-8', name: 'Red Wine Vinegar', amount: '1 tbsp' },
-  { id: 'i-9', name: 'Chilli Flakes', amount: '1 pinch' },
-    { id: 'i-10', name: 'Olive Oil', amount: '50 ml' },
+  { id: 'i-2', name: 'Parsley', amount: '15 g' },
+  { id: 'i-3', name: 'Fresh Oregano', amount: '1.5 tbsp' },
+  { id: 'i-4', name: 'Garlic', amount: '2' },
+  { id: 'i-5', name: 'Red Wine Vinegar', amount: '1 tbsp' },
+  { id: 'i-6', name: 'Chilli Flakes', amount: '1 pinch' },
+  { id: 'i-7', name: 'Olive Oil', amount: '50 ml' },
     ],
     instructions: 'Season & cook steaks. Blitz herbs, garlic, vinegar, chilli & oil to a coarse sauce; spoon over sliced steak.',
     dateCreated: '2025-01-02T15:00:00.000Z',
@@ -190,7 +188,7 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
     { id: 'i-7', name: 'Beef Stock', amount: '150 ml' },
     { id: 'i-8', name: 'Double Cream', amount: '150 ml' },
     { id: 'i-9', name: 'Dijon Mustard', amount: '1 tsp' },
-  { id: 'i-12', name: 'Parsley', amount: '5 g' },
+  { id: 'i-10', name: 'Parsley', amount: '5 g' },
     ],
     instructions: 'Sear steak strips, set aside. Soften onion & mushrooms, deglaze with wine, add stock, cream & mustard; return beef briefly and finish with parsley.',
     dateCreated: '2025-01-02T16:00:00.000Z',
@@ -207,11 +205,11 @@ const EXTRA_SEEDED_RECIPES: Recipe[] = [
   { id: 'i-3', name: 'Mint', amount: '10 g' },
   { id: 'i-4', name: 'Parsley', amount: '10 g' },
   { id: 'i-5', name: 'Pork Belly', amount: '1100 g' },
-    { id: 'i-7', name: 'Fennel Seeds', amount: '2 tsp' },
-  { id: 'i-8', name: 'Onion', amount: '2' },
-  { id: 'i-9', name: 'Garlic', amount: '3' },
-    { id: 'i-10', name: 'White Wine Vinegar', amount: '1 tbsp' },
-    { id: 'i-11', name: 'Chicken Stock', amount: '700 ml' },
+  { id: 'i-6', name: 'Fennel Seeds', amount: '2 tsp' },
+  { id: 'i-7', name: 'Onion', amount: '2' },
+  { id: 'i-8', name: 'Garlic', amount: '3' },
+    { id: 'i-9', name: 'White Wine Vinegar', amount: '1 tbsp' },
+    { id: 'i-10', name: 'Chicken Stock', amount: '700 ml' },
     ],
     instructions: 'Slow-roast seasoned pork belly over onions & fennel until tender with crisp skin. Deglaze with vinegar & stock for gravy. Serve with quick pickled onion & herbs.',
     dateCreated: '2025-01-02T17:00:00.000Z',
@@ -287,7 +285,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     id: 'seed-roasted-vegetable-pasta-mozzarella',
     title: 'Roasted Vegetable Pasta with Mozzarella',
     ingredients: [
-  { id: 'i-1', name: 'Pepper', amount: '2' },
+  { id: 'i-1', name: 'Bell Pepper', amount: '2' },
   { id: 'i-2', name: 'Courgette', amount: '1' },
   { id: 'i-3', name: 'Red Onion', amount: '1' },
   { id: 'i-4', name: 'Olive Oil', amount: '2 tbsp' },
@@ -362,6 +360,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ],
     instructions: 'Combine 1 tbsp curry paste, yoghurt, salt in bowl, add chicken, mix, marinate at least 1 hour. For sauce: heat oil in pan, fry onion 5 min, add garlic, ginger, 2 tbsp curry paste, cook 1½ min. Add 300ml water, tomato purée, bring to simmer, cook 5 min, blend smooth. Fry marinated chicken 3 min until browned, add sauce, cook 3–4 min until chicken cooked. Add water if sauce thickens. Serve with coriander and chilli.',
     dateCreated: '2025-01-14T00:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-' + slugify('Thai Pork Lettuce Cups'),
@@ -374,15 +373,15 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-5', name: 'Garlic', amount: '2' },
   { id: 'i-6', name: 'Spring Onion', amount: '1' },
   { id: 'i-7', name: 'Baby Gem Lettuce', amount: '8' },
-  { id: 'i-8', name: 'Coriander', amount: '5 g' },
-  { id: 'i-9', name: 'Lime Juice', amount: '1 tbsp' },
-  { id: 'i-10', name: 'Fish Sauce', amount: '1 tbsp' },
-  { id: 'i-11', name: 'Sriracha', amount: '1 tbsp' },
-  { id: 'i-12', name: 'Coriander', amount: '5 g' },
+  { id: 'i-8', name: 'Lime Juice', amount: '1 tbsp' },
+  { id: 'i-9', name: 'Fish Sauce', amount: '1 tbsp' },
+  { id: 'i-10', name: 'Sriracha', amount: '1 tbsp' },
+  { id: 'i-11', name: 'Coriander', amount: '5 g' },
     ],
     instructions:
       'Stir-fry pork with aromatics until cooked, toss with a simple lime–fish sauce dressing, and serve in crisp lettuce cups with herbs.',
   dateCreated: '2025-01-03T09:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-' + slugify('Pesto Courgetti Spaghetti with Red Pepper and Feta'),
@@ -399,12 +398,13 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Warm peppers in oil, briefly sauté courgetti, then toss with pesto and feta. Finish with pine nuts and basil. Add cooked spaghetti if you want a larger portion.',
   dateCreated: '2025-01-04T09:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-' + slugify('Mixed Bean and Miso Salad with Chicken'),
     title: 'Mixed Bean and Miso Salad with Chicken',
     ingredients: [
-  { id: 'i-1', name: 'Pepper', amount: '1' },
+  { id: 'i-1', name: 'Bell Pepper', amount: '1' },
   { id: 'i-2', name: 'Spring Onion', amount: '1' },
   { id: 'i-3', name: 'Edamame', amount: '100 g' },
   { id: 'i-4', name: 'Chicken', amount: '150 g' },
@@ -433,6 +433,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Roast or pan-cook the meats and veg until done. Add egg, then assemble in stacked lettuce leaves with mayo and a touch of sriracha. Roll and serve.',
   dateCreated: '2025-01-06T09:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-' + slugify('One Pan Squeezed Sausage Casserole'),
@@ -450,6 +451,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Cut sausages into pieces, brown with onion and squash. Add thyme and greens, finish with vinegar for a hearty one-pan meal.',
   dateCreated: '2025-01-07T09:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-' + slugify('Chinese Pork Balls in Mushroom Miso Broth'),
@@ -470,6 +472,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Form seasoned pork into balls and bake. Make umami-rich broth with mushrooms, miso and soy. Combine with greens for a satisfying soup.',
   dateCreated: '2025-01-08T09:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-' + slugify('Chicken Casserole with Chorizo, Thyme and Olives'),
@@ -483,11 +486,13 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-6', name: 'Garlic', amount: '5' },
   { id: 'i-7', name: 'White Beans', amount: '400 g' },
   { id: 'i-8', name: 'Thyme', amount: '0.25 tsp' },
-  { id: 'i-9', name: 'Tenderstem Broccoli', amount: '200 g' },
+  { id: 'i-9', name: 'Olives', amount: '50 g' },
+  { id: 'i-10', name: 'Tenderstem Broccoli', amount: '200 g' },
     ],
     instructions:
-      'Brown chicken, sauté chorizo and onions, then slow-cook with beans, thyme and whole garlic. Finish with broccoli for a Mediterranean feast.',
+      'Brown chicken, sauté chorizo and onions, then slow-cook with beans, thyme, olives and whole garlic. Finish with broccoli for a Mediterranean feast.',
   dateCreated: '2025-01-09T09:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-' + slugify('Piri Piri Roast Chicken with Jalapeño Yoghurt'),
@@ -506,6 +511,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Marinate chicken in piri piri blend, roast with lemon. Serve with cooling jalapeño yoghurt sauce for a spicy-fresh combination.',
   dateCreated: '2025-01-10T09:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-' + slugify('Keto-fried Chicken'),
@@ -560,6 +566,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Blitz aromatics into a paste, fry briefly, add coconut milk and spinach. Simmer with prawns until just cooked through. Finish with lemon.',
   dateCreated: '2025-01-13T09:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-easy-chicken-tagine',
@@ -571,7 +578,7 @@ export const SEEDED_RECIPES: Recipe[] = [
   { id: 'i-4', name: 'Cumin', amount: '0.25 tsp' },
   { id: 'i-5', name: 'Coriander', amount: '0.5 tsp' },
   { id: 'i-6', name: 'Cinnamon', amount: '0.25 tsp' },
-  { id: 'i-7', name: 'Pepper', amount: '1' },
+  { id: 'i-7', name: 'Bell Pepper', amount: '1' },
   { id: 'i-8', name: 'Chopped Tomatoes Can', amount: '400 g' },
   { id: 'i-9', name: 'Chickpeas', amount: '210 g' },
   { id: 'i-10', name: 'Apricots', amount: '4' },
@@ -581,6 +588,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Preheat oven to 200°C/fan 180°C/Gas 6. Heat oil in medium flame-proof casserole over medium heat. Add onion and chicken, gently fry 6-8 minutes until onion lightly browned. Sprinkle with spices, cook few seconds more. Add pepper, tomatoes, chickpeas, apricots and crumbled stock cube. Pour in 250ml water, season and bring to simmer. Cover and cook in oven 45 minutes until chicken tender and sauce thickened. Sprinkle with herbs to serve.',
   dateCreated: '2025-01-13T10:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-chicken-wrapped-in-parma-ham',
@@ -599,6 +607,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Place chicken on board, cover with cling film and bash with rolling pin to flatten to 2cm thick. Season and wrap each breast in Parma ham. Heat 1 tbsp oil in large non-stick pan, fry wrapped chicken 3-4 minutes each side until lightly browned. Transfer to plate. Add remaining oil to pan with onion, fry 5 minutes, add garlic and cook few seconds. Add tomatoes, oregano, 300ml water and spinach. Bring to simmer, cook 2-3 minutes until spinach soft. Season sauce. Return chicken, nestle into sauce. Simmer gently 18-20 minutes until chicken tender. Sprinkle with Parmesan to serve.',
   dateCreated: '2025-01-13T11:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-thai-curry-with-prawns',
@@ -617,6 +626,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Heat oil in large non-stick frying pan or wok over medium-high heat and stir-fry pepper 2 minutes. Add spring onions, ginger and curry paste, cook 1 minute more. Pour in coconut milk and bring to gentle simmer. Add mange tout and chilli if using. Return to simmer and cook 2 minutes. Add prawns and heat 1-2 minutes until hot. Add splash of water if sauce thickens too much. Serve with freshly cooked cauliflower rice.',
   dateCreated: '2025-01-13T12:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-pan-fried-fish-with-lemon-and-parsley',
@@ -631,6 +641,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Season fish on skinless side with sea salt and black pepper. Melt butter with oil in large non-stick frying pan over medium heat. Add plaice skin-side down, cook 3 minutes. Turn over and cook 1-2 minutes more depending on thickness. Lift fish to warmed plate with fish slice. Return pan to heat, add lemon juice and parsley, simmer few seconds stirring constantly. Pour buttery juices over fish to serve.',
   dateCreated: '2025-01-13T13:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-smoked-haddock-with-lentils',
@@ -668,6 +679,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Make dressing by combining yoghurt, garlic, herbs, oil and 2 tbsp cold water in bowl. Season with pinch of sea salt and lots of ground black pepper. Wash lettuce and drain well. Divide leaves between two shallow bowls and scatter with tomatoes. Place chicken on top, sprinkle with mixed seeds and Parmesan, drizzle with dressing. Season with ground black pepper and serve.',
   dateCreated: '2025-01-13T15:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-shakshuka',
@@ -675,7 +687,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ingredients: [
   { id: 'i-1', name: 'Olive Oil', amount: '1 tbsp' },
   { id: 'i-2', name: 'Onion', amount: '1' },
-  { id: 'i-3', name: 'Pepper', amount: '1' },
+  { id: 'i-3', name: 'Bell Pepper', amount: '1' },
   { id: 'i-4', name: 'Garlic', amount: '2' },
   { id: 'i-5', name: 'Cumin', amount: '1 tsp' },
   { id: 'i-6', name: 'Paprika', amount: '0.5 tsp' },
@@ -687,13 +699,14 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Heat oil in medium non-stick frying pan with lid. Add onion and pepper, gently fry 5-6 minutes until softened. Add garlic, cumin and paprika, cook 20-30 seconds. Tip in tomatoes, tomato purée, good pinch sea salt and lots black pepper. Bring to simmer and cook 4 minutes until tomato thickened. Make four holes in vegetable mixture and break egg into each. Cover and cook very gently 3-5 minutes until whites set but yolks remain runny. Sprinkle with herbs if using and season with more black pepper.',
   dateCreated: '2025-01-13T16:00:00.000Z',
+    tags: ['Keto']
   },
   {
-    id: 'seed-french-bean-bowl-with-feta-and-pine-nuts',
-    title: 'French Bean Bowl with Feta and Pine Nuts',
+    id: 'seed-green-bean-bowl-with-feta-and-pine-nuts',
+    title: 'Green Bean Bowl with Feta and Pine Nuts',
     ingredients: [
   { id: 'i-1', name: 'Pine Nuts', amount: '3 tbsp' },
-  { id: 'i-2', name: 'French Beans', amount: '180 g' },
+  { id: 'i-2', name: 'Green Beans', amount: '180 g' },
   { id: 'i-3', name: 'Olive Oil', amount: '1 tbsp' },
   { id: 'i-4', name: 'Tomato', amount: '2' },
   { id: 'i-5', name: 'Garlic', amount: '1' },
@@ -703,6 +716,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Toast pine nuts in dry frying pan over medium heat 1-2 minutes until golden. Remove and set aside. Return pan to heat, add beans and oil, fry 2-3 minutes stirring occasionally. Stir in tomatoes and cook 4 minutes. Add garlic and cook 1 minute more. Remove from heat and scatter feta and pine nuts over. Allow to rest minute or so to let feta soften, then divide between bowls and season with black pepper and chilli flakes if using.',
   dateCreated: '2025-01-13T17:00:00.000Z',
+    tags: ['Keto']
   },
   {
     id: 'seed-cheesy-fajita-beef-casserole',
@@ -710,7 +724,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     ingredients: [
   { id: 'i-1', name: 'Olive Oil', amount: '1.5 tbsp' },
   { id: 'i-2', name: 'Onion', amount: '1' },
-  { id: 'i-3', name: 'Pepper', amount: '2' },
+  { id: 'i-3', name: 'Bell Pepper', amount: '2' },
   { id: 'i-4', name: 'Beef Mince', amount: '250 g' },
   { id: 'i-5', name: 'Black Beans', amount: '400 g' },
   { id: 'i-6', name: 'Fajita Seasoning', amount: '2 tbsp' },
@@ -722,6 +736,7 @@ export const SEEDED_RECIPES: Recipe[] = [
     instructions:
       'Preheat oven to 200°C/Fan 180°C/Gas 6. Place wide-based ovenproof casserole over medium heat. Add oil, onion and peppers, sauté 3-4 minutes. Add minced beef and fry about 4 minutes, stirring to break meat into small pieces. Stir in black beans, fajita seasoning, tomatoes and jalapeño peppers. Simmer 3 minutes and season well. Scatter cheese over and bake 20 minutes until cheese browned and bubbling. Serve with yoghurt alongside.',
   dateCreated: '2025-01-13T18:00:00.000Z',
+    tags: ['Keto']
   },
 ];
 
