@@ -1,12 +1,26 @@
 import { BackButton } from '@/components/BackButton';
 import { shared } from '@/styles/theme';
-import { loadPantry, PantryItem, parseAmount, savePantry } from '@/utils/pantry';
+import {
+  loadPantry,
+  PantryItem,
+  parseAmount,
+  savePantry,
+} from '@/utils/pantry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Modal, PanResponder, Platform, ScrollView, StyleSheet, ToastAndroid, TouchableOpacity } from 'react-native';
+import {
+  Alert,
+  Modal,
+  PanResponder,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  ToastAndroid,
+  TouchableOpacity,
+} from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -54,14 +68,24 @@ export default function WeeklyTimelineScreen() {
   const [activeTagFilter, setActiveTagFilter] = useState<string>('All'); // 'All' | 'Keto' | 'Mediterranean'
   // New: rota state
   const [rotaPaused, setRotaPaused] = useState<RotaPausedMap>({});
-  const [rotaWeekStartMap, setRotaWeekStartMap] = useState<RotaWeekStartMap>({});
+  const [rotaWeekStartMap, setRotaWeekStartMap] = useState<RotaWeekStartMap>(
+    {},
+  );
   const [cookedMap, setCookedMap] = useState<Record<string, boolean>>({});
   const [pantry, setPantry] = useState<PantryItem[]>([]);
   // Track pause-shift history to restore on unpause of the same day
-  const [pauseShiftHistory, setPauseShiftHistory] = useState<Record<string, { before: MealPlan[]; after: MealPlan[] }>>({});
+  const [pauseShiftHistory, setPauseShiftHistory] = useState<
+    Record<string, { before: MealPlan[]; after: MealPlan[] }>
+  >({});
   // Shopping list generation modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateFromDate, setGenerateFromDate] = useState<string | null>(null);
+
+  // Ingredients modal state
+  const [showIngredientsModal, setShowIngredientsModal] = useState(false);
+  const [ingredientsModalDate, setIngredientsModalDate] = useState<
+    string | null
+  >(null);
 
   // Get start of week (Monday)
   const getStartOfWeek = (date: Date) => {
@@ -96,7 +120,7 @@ export default function WeeklyTimelineScreen() {
   const formatDisplayDate = (date: Date) => {
     return date.toLocaleDateString('en-GB', {
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -115,26 +139,38 @@ export default function WeeklyTimelineScreen() {
       const storedMealPlan = await AsyncStorage.getItem('mealPlan');
       if (storedMealPlan) {
         const parsedMealPlan = JSON.parse(storedMealPlan) as MealPlan[];
-        
+
         // Clean up meal plan - remove entries for recipes that no longer exist
-        const validRecipeIds = new Set(parsedRecipes.map((recipe: Recipe) => recipe.id));
-        let cleanedMealPlan = parsedMealPlan.filter((meal: MealPlan) => validRecipeIds.has(meal.recipeId));
-        
+        const validRecipeIds = new Set(
+          parsedRecipes.map((recipe: Recipe) => recipe.id),
+        );
+        let cleanedMealPlan = parsedMealPlan.filter((meal: MealPlan) =>
+          validRecipeIds.has(meal.recipeId),
+        );
+
         // Migration: ensure serves exists (default 4)
         let mutated = false;
-        cleanedMealPlan = cleanedMealPlan.map((m) => {
-          if (typeof m.serves !== 'number') { mutated = true; return { ...m, serves: 4 as const }; }
+        cleanedMealPlan = cleanedMealPlan.map(m => {
+          if (typeof m.serves !== 'number') {
+            mutated = true;
+            return { ...m, serves: 4 as const };
+          }
           return m;
         });
-        
+
         // If we removed any orphaned entries or mutated serves, save the cleaned meal plan
         if (cleanedMealPlan.length !== parsedMealPlan.length || mutated) {
-          await AsyncStorage.setItem('mealPlan', JSON.stringify(cleanedMealPlan));
+          await AsyncStorage.setItem(
+            'mealPlan',
+            JSON.stringify(cleanedMealPlan),
+          );
           if (cleanedMealPlan.length !== parsedMealPlan.length) {
-            console.log(`Cleaned up meal plan: removed ${parsedMealPlan.length - cleanedMealPlan.length} orphaned entries`);
+            console.log(
+              `Cleaned up meal plan: removed ${parsedMealPlan.length - cleanedMealPlan.length} orphaned entries`,
+            );
           }
         }
-        
+
         setMealPlan(cleanedMealPlan);
       }
 
@@ -143,14 +179,14 @@ export default function WeeklyTimelineScreen() {
       setRotaPaused(pausedRaw ? JSON.parse(pausedRaw) : {});
 
       // New: load weekly start person map
-  const startMapRaw = await AsyncStorage.getItem('rotaWeekStartMap');
-  setRotaWeekStartMap(startMapRaw ? JSON.parse(startMapRaw) : {});
-  const cookedRaw = await AsyncStorage.getItem('cookedMeals');
-  setCookedMap(cookedRaw ? JSON.parse(cookedRaw) : {});
-  setPantry(await loadPantry());
-  // Load pause-shift history
-  const historyRaw = await AsyncStorage.getItem('pauseShiftHistory');
-  setPauseShiftHistory(historyRaw ? JSON.parse(historyRaw) : {});
+      const startMapRaw = await AsyncStorage.getItem('rotaWeekStartMap');
+      setRotaWeekStartMap(startMapRaw ? JSON.parse(startMapRaw) : {});
+      const cookedRaw = await AsyncStorage.getItem('cookedMeals');
+      setCookedMap(cookedRaw ? JSON.parse(cookedRaw) : {});
+      setPantry(await loadPantry());
+      // Load pause-shift history
+      const historyRaw = await AsyncStorage.getItem('pauseShiftHistory');
+      setPauseShiftHistory(historyRaw ? JSON.parse(historyRaw) : {});
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -188,46 +224,68 @@ export default function WeeklyTimelineScreen() {
       }
       // Load recipes (ensure we have latest)
       const storedRecipes = await AsyncStorage.getItem('recipes');
-      const parsedRecipes: Recipe[] = storedRecipes ? JSON.parse(storedRecipes) : recipes;
+      const parsedRecipes: Recipe[] = storedRecipes
+        ? JSON.parse(storedRecipes)
+        : recipes;
 
       // Build ingredient aggregation similar to shopping-list screen (simplified: no fridge/pantry logic here)
-      interface TempItem { name: string; amounts: string[]; recipes: string[]; checked: boolean; isCustom?: boolean }
+      interface TempItem {
+        name: string;
+        amounts: string[];
+        recipes: string[];
+        checked: boolean;
+        isCustom?: boolean;
+      }
       const temp: Record<string, TempItem> = {};
-  weekMeals.filter(m => m.date >= generateFromDate).forEach(meal => {
-        const r = parsedRecipes.find(rr => rr.id === meal.recipeId);
-        if (!r) return;
-        const baseServes = typeof r.serves === 'number' ? r.serves : 4;
-        const targetServes = typeof meal.serves === 'number' ? meal.serves : 4;
-        const factor = baseServes > 0 ? (targetServes / baseServes) : 1;
-        r.ingredients.forEach(ing => {
-          const key = ing.name.trim();
-          if (!key) return;
-          // Very naive amount scaling if ends with a number + unit separated by space (leave complex strings as-is)
-          let amt = ing.amount || '';
-          if (amt) {
-            const numMatch = amt.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
-            if (numMatch) {
-              const num = parseFloat(numMatch[1]) * factor;
-              const unit = numMatch[2];
-              amt = `${num % 1 === 0 ? num : num.toFixed(2)} ${unit}`.trim();
+      weekMeals
+        .filter(m => m.date >= generateFromDate)
+        .forEach(meal => {
+          const r = parsedRecipes.find(rr => rr.id === meal.recipeId);
+          if (!r) return;
+          const baseServes = typeof r.serves === 'number' ? r.serves : 4;
+          const targetServes =
+            typeof meal.serves === 'number' ? meal.serves : 4;
+          const factor = baseServes > 0 ? targetServes / baseServes : 1;
+          r.ingredients.forEach(ing => {
+            const key = ing.name.trim();
+            if (!key) return;
+            // Very naive amount scaling if ends with a number + unit separated by space (leave complex strings as-is)
+            let amt = ing.amount || '';
+            if (amt) {
+              const numMatch = amt.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+              if (numMatch) {
+                const num = parseFloat(numMatch[1]) * factor;
+                const unit = numMatch[2];
+                amt = `${num % 1 === 0 ? num : num.toFixed(2)} ${unit}`.trim();
+              }
             }
-          }
-          if (temp[key]) {
-            if (amt && !temp[key].amounts.includes(amt)) temp[key].amounts.push(amt);
-            if (!temp[key].recipes.includes(r.title)) temp[key].recipes.push(r.title);
-          } else {
-            temp[key] = { name: key, amounts: amt ? [amt] : [], recipes: [r.title], checked: false };
-          }
+            if (temp[key]) {
+              if (amt && !temp[key].amounts.includes(amt))
+                temp[key].amounts.push(amt);
+              if (!temp[key].recipes.includes(r.title))
+                temp[key].recipes.push(r.title);
+            } else {
+              temp[key] = {
+                name: key,
+                amounts: amt ? [amt] : [],
+                recipes: [r.title],
+                checked: false,
+              };
+            }
+          });
         });
-      });
 
-      const finalList = Object.values(temp).sort((a,b) => a.name.localeCompare(b.name));
-  await AsyncStorage.setItem('shoppingListChecked', JSON.stringify({}));
-  await AsyncStorage.setItem('customShoppingItems', JSON.stringify([]));
-  await AsyncStorage.setItem('shoppingListFromDate', generateFromDate);
-  Alert.alert('Shopping List Updated', `Open Shopping List to view items from ${generateFromDate} onwards.`);
-      if (Platform.OS === 'android') ToastAndroid.show('Shopping list regenerated', ToastAndroid.SHORT);
-  setShowGenerateModal(false);
+      Object.values(temp).sort((a, b) => a.name.localeCompare(b.name));
+      await AsyncStorage.setItem('shoppingListChecked', JSON.stringify({}));
+      await AsyncStorage.setItem('customShoppingItems', JSON.stringify([]));
+      await AsyncStorage.setItem('shoppingListFromDate', generateFromDate);
+      Alert.alert(
+        'Shopping List Updated',
+        `Open Shopping List to view items from ${generateFromDate} onwards.`,
+      );
+      if (Platform.OS === 'android')
+        ToastAndroid.show('Shopping list regenerated', ToastAndroid.SHORT);
+      setShowGenerateModal(false);
     } catch (e) {
       console.error('Failed to regenerate shopping list', e);
       Alert.alert('Error', 'Could not generate new shopping list.');
@@ -244,55 +302,76 @@ export default function WeeklyTimelineScreen() {
         Alert.alert('No Meals', 'No recipes assigned for this week.');
         return;
       }
-      const exportRecipes = weekMeals.map(m => {
-        const r = recipes.find(rp => rp.id === m.recipeId);
-        return {
-          date: m.date,
+      const exportRecipes = weekMeals
+        .map(m => {
+          const r = recipes.find(rp => rp.id === m.recipeId);
+          return {
+            date: m.date,
             title: m.recipeTitle,
             serves: m.serves || 4,
             ingredients: r?.ingredients || [],
-            instructions: r?.instructions || ''
-        };
-      }).sort((a,b)=> a.date.localeCompare(b.date));
+            instructions: r?.instructions || '',
+          };
+        })
+        .sort((a, b) => a.date.localeCompare(b.date));
       const payload = {
         generatedAt: new Date().toISOString(),
         weekStart: formatDate(getStartOfWeek(currentWeek)),
         count: exportRecipes.length,
-        meals: exportRecipes
+        meals: exportRecipes,
       };
       const json = JSON.stringify(payload, null, 2);
       const fileName = `meal-plan-${payload.weekStart}.json`;
       const fileUri = FileSystem.cacheDirectory + fileName;
-      await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeAsStringAsync(fileUri, json, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       if (Platform.OS === 'web') {
         // Web fallback: create downloadable link
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = fileName; a.click();
-        setTimeout(()=> URL.revokeObjectURL(url), 5000);
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
       } else {
         // Dynamic import of expo-sharing to avoid native crash if dev client not rebuilt yet
         let sharing: any = null;
-        try { sharing = await import('expo-sharing'); } catch (err: any) {
-          console.warn('expo-sharing dynamic import failed (likely not installed in this build):', err?.message);
+        try {
+          sharing = await import('expo-sharing');
+        } catch (err: any) {
+          console.warn(
+            'expo-sharing dynamic import failed (likely not installed in this build):',
+            err?.message,
+          );
         }
         if (sharing && typeof sharing.isAvailableAsync === 'function') {
           try {
             if (await sharing.isAvailableAsync()) {
-              await sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Share Weekly Meal Plan' });
+              await sharing.shareAsync(fileUri, {
+                mimeType: 'application/json',
+                dialogTitle: 'Share Weekly Meal Plan',
+              });
             } else {
               Alert.alert('Sharing Unavailable', `Saved to: ${fileUri}`);
             }
           } catch (shareErr) {
-            console.warn('Share attempt failed, fallback to file path', shareErr);
+            console.warn(
+              'Share attempt failed, fallback to file path',
+              shareErr,
+            );
             Alert.alert('Exported', `Saved to: ${fileUri}`);
           }
         } else {
-          Alert.alert('Sharing Module Missing', `Saved to: ${fileUri}\nRebuild the app (expo run:android / ios) to enable native sharing.`);
+          Alert.alert(
+            'Sharing Module Missing',
+            `Saved to: ${fileUri}\nRebuild the app (expo run:android / ios) to enable native sharing.`,
+          );
         }
       }
-      if (Platform.OS === 'android') ToastAndroid.show('Meal plan exported', ToastAndroid.SHORT);
+      if (Platform.OS === 'android')
+        ToastAndroid.show('Meal plan exported', ToastAndroid.SHORT);
     } catch (e) {
       console.error('Export failed', e);
       Alert.alert('Export Failed', 'Could not export meal plan.');
@@ -300,7 +379,8 @@ export default function WeeklyTimelineScreen() {
   };
 
   // New: helpers for rota
-  const other = (p: CookPerson): CookPerson => (p === 'Jimmy' ? 'Liddy' : 'Jimmy');
+  const other = (p: CookPerson): CookPerson =>
+    p === 'Jimmy' ? 'Liddy' : 'Jimmy';
 
   const getWeekStartPerson = (weekDate: Date): CookPerson => {
     const key = getWeekKey(weekDate);
@@ -333,9 +413,15 @@ export default function WeeklyTimelineScreen() {
           // Save new plan
           await saveMealPlan(result.plan);
           // Record history for restoration on unpause of this date
-          const nextHistory = { ...pauseShiftHistory, [dateStr]: { before: result.before, after: result.after } };
+          const nextHistory = {
+            ...pauseShiftHistory,
+            [dateStr]: { before: result.before, after: result.after },
+          };
           setPauseShiftHistory(nextHistory);
-          await AsyncStorage.setItem('pauseShiftHistory', JSON.stringify(nextHistory));
+          await AsyncStorage.setItem(
+            'pauseShiftHistory',
+            JSON.stringify(nextHistory),
+          );
         }
       } catch (e) {
         console.error('Failed to shift meals after pause:', e);
@@ -344,26 +430,35 @@ export default function WeeklyTimelineScreen() {
     }
 
     // If we unpaused this day, and we have history, restore order
-  try {
+    try {
       const hist = pauseShiftHistory[dateStr];
       if (hist) {
         // Start from current plan
         let restored = [...mealPlan];
         // Remove entries that were placed by the shift (match by date and recipeId)
-        const afterKeySet = new Set(hist.after.map(a => `${a.date}__${a.recipeId}`));
-        restored = restored.filter(m => !afterKeySet.has(`${m.date}__${m.recipeId}`));
+        const afterKeySet = new Set(
+          hist.after.map(a => `${a.date}__${a.recipeId}`),
+        );
+        restored = restored.filter(
+          m => !afterKeySet.has(`${m.date}__${m.recipeId}`),
+        );
         // Also ensure we clear target dates for restoration to avoid collisions
         const beforeDates = new Set(hist.before.map(b => b.date));
         restored = restored.filter(m => !beforeDates.has(m.date));
         // Add back the original entries (before snapshot)
         restored.push(...hist.before);
         // Sort by date asc
-        restored.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        restored.sort((a, b) =>
+          a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+        );
         await saveMealPlan(restored);
         // Clear history for this date
         const { [dateStr]: _, ...remaining } = pauseShiftHistory;
         setPauseShiftHistory(remaining);
-        await AsyncStorage.setItem('pauseShiftHistory', JSON.stringify(remaining));
+        await AsyncStorage.setItem(
+          'pauseShiftHistory',
+          JSON.stringify(remaining),
+        );
       }
     } catch (e) {
       console.error('Failed to restore meals after unpause:', e);
@@ -378,7 +473,10 @@ export default function WeeklyTimelineScreen() {
   };
 
   // Helper: next non-paused day strictly after the given date
-  const nextNonPausedAfter = (dateStr: string, pausedMap: RotaPausedMap): string => {
+  const nextNonPausedAfter = (
+    dateStr: string,
+    pausedMap: RotaPausedMap,
+  ): string => {
     let attempts = 0;
     let ds = addDaysStr(dateStr, 1);
     while (pausedMap[ds]) {
@@ -396,7 +494,7 @@ export default function WeeklyTimelineScreen() {
   ): { plan: MealPlan[]; before: MealPlan[]; after: MealPlan[] } | null => {
     // Collect affected entries (>= startDate) sorted by date asc
     const affected = plan
-      .filter((m) => m.date >= startDate)
+      .filter(m => m.date >= startDate)
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
     if (affected.length === 0) return null; // nothing to shift
@@ -417,12 +515,12 @@ export default function WeeklyTimelineScreen() {
     }
 
     // Rebuild plan: remove affected originals, then add shifted entries
-    const unaffected = plan.filter((m) => m.date < startDate);
-    const shiftedEntries = targets.map(({ orig, newDate }) => ({ ...orig, date: newDate }));
-    const shifted: MealPlan[] = [
-      ...unaffected,
-      ...shiftedEntries,
-    ];
+    const unaffected = plan.filter(m => m.date < startDate);
+    const shiftedEntries = targets.map(({ orig, newDate }) => ({
+      ...orig,
+      date: newDate,
+    }));
+    const shifted: MealPlan[] = [...unaffected, ...shiftedEntries];
     // Sort final plan by date asc for consistency
     shifted.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     return { plan: shifted, before: affected, after: shiftedEntries };
@@ -436,7 +534,7 @@ export default function WeeklyTimelineScreen() {
       date: selectedDate,
       recipeId,
       recipeTitle,
-      serves: selectedServes || 4
+      serves: selectedServes || 4,
     });
 
     await saveMealPlan(newMealPlan);
@@ -448,9 +546,10 @@ export default function WeeklyTimelineScreen() {
   const removeRecipeFromDay = async (date: string) => {
     // Web confirm fallback
     if (Platform.OS === 'web') {
-      const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
-        ? window.confirm('Remove this recipe from this day?')
-        : true;
+      const ok =
+        typeof window !== 'undefined' && typeof window.confirm === 'function'
+          ? window.confirm('Remove this recipe from this day?')
+          : true;
       if (!ok) return;
       const newMealPlan = mealPlan.filter(meal => meal.date !== date);
       await saveMealPlan(newMealPlan);
@@ -462,32 +561,38 @@ export default function WeeklyTimelineScreen() {
       'Are you sure you want to remove this recipe from this day?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
+        {
+          text: 'Remove',
           style: 'destructive',
           onPress: async () => {
             const newMealPlan = mealPlan.filter(meal => meal.date !== date);
             await saveMealPlan(newMealPlan);
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
   // Pick a random recipe, optionally by tag
   const pickRandomRecipe = (tag?: 'Keto' | 'Mediterranean'): Recipe | null => {
-    const pool = tag ? recipes.filter(r => r.tags && r.tags.includes(tag)) : recipes;
+    const pool = tag
+      ? recipes.filter(r => r.tags && r.tags.includes(tag))
+      : recipes;
     if (!pool || pool.length === 0) return null;
     const idx = Math.floor(Math.random() * pool.length);
     return pool[idx];
   };
 
   // Assign a random recipe to a given date, replacing any existing assignment
-  const assignRandomForDate = async (dateStr: string, tag?: 'Keto' | 'Mediterranean') => {
+  const assignRandomForDate = async (
+    dateStr: string,
+    tag?: 'Keto' | 'Mediterranean',
+  ) => {
     if (isPaused(dateStr)) {
       const msg = 'This day is paused. Resume the day to assign a recipe.';
       if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(msg);
+        if (typeof window !== 'undefined' && typeof window.alert === 'function')
+          window.alert(msg);
       } else {
         Alert.alert('Paused', msg);
       }
@@ -495,23 +600,33 @@ export default function WeeklyTimelineScreen() {
     }
     const recipe = pickRandomRecipe(tag);
     if (!recipe) {
-      const msg = tag ? `No ${tag} recipes available.` : 'No recipes available.';
+      const msg = tag
+        ? `No ${tag} recipes available.`
+        : 'No recipes available.';
       if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(msg);
+        if (typeof window !== 'undefined' && typeof window.alert === 'function')
+          window.alert(msg);
       } else {
         Alert.alert('No Recipes', msg);
       }
       return;
     }
     const newPlan = mealPlan.filter(m => m.date !== dateStr);
-    newPlan.push({ date: dateStr, recipeId: recipe.id, recipeTitle: recipe.title, serves: 4 });
+    newPlan.push({
+      date: dateStr,
+      recipeId: recipe.id,
+      recipeTitle: recipe.title,
+      serves: 4,
+    });
     await saveMealPlan(newPlan);
   };
 
   // Update serves for a specific day (2 or 4)
   const updateMealServes = async (dateStr: string, newServes: 2 | 4) => {
     try {
-      const updated = mealPlan.map(m => m.date === dateStr ? { ...m, serves: newServes } : m);
+      const updated = mealPlan.map(m =>
+        m.date === dateStr ? { ...m, serves: newServes } : m,
+      );
       await saveMealPlan(updated);
     } catch (e) {
       console.error('Failed to update serves:', e);
@@ -521,6 +636,34 @@ export default function WeeklyTimelineScreen() {
 
   const getRecipeForDate = (date: string) => {
     return mealPlan.find(meal => meal.date === date);
+  };
+
+  const openIngredientsModal = (dateStr: string) => {
+    setIngredientsModalDate(dateStr);
+    setShowIngredientsModal(true);
+  };
+
+  const closeIngredientsModal = () => {
+    setShowIngredientsModal(false);
+    setIngredientsModalDate(null);
+  };
+
+  const getScaledAmount = (amount: string, factor: number) => {
+    // Keep this intentionally conservative: only scale if the string starts with a number.
+    const amt = (amount || '').trim();
+    if (!amt) return '';
+    if (factor === 1) return amt;
+    const m = amt.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+    if (!m) return amt;
+    const num = parseFloat(m[1]);
+    if (!isFinite(num)) return amt;
+    const unit = (m[2] || '').trim();
+    const scaled = num * factor;
+    const pretty =
+      scaled % 1 === 0
+        ? String(scaled)
+        : scaled.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    return unit ? `${pretty} ${unit}` : pretty;
   };
 
   const markCooked = async (dateStr: string) => {
@@ -537,12 +680,21 @@ export default function WeeklyTimelineScreen() {
           for (const ing of recipe.ingredients) {
             const { qty, unit } = parseAmount(ing.amount);
             if (qty && unit) {
-              const baseServes = typeof recipe.serves === 'number' ? recipe.serves : 4;
-              const targetServes = typeof meal.serves === 'number' ? meal.serves : 4;
-              const factor = baseServes > 0 ? (targetServes / baseServes) : 1;
-              const idx = updated.findIndex(p => p.name.toLowerCase() === ing.name.toLowerCase() && p.unit === unit);
+              const baseServes =
+                typeof recipe.serves === 'number' ? recipe.serves : 4;
+              const targetServes =
+                typeof meal.serves === 'number' ? meal.serves : 4;
+              const factor = baseServes > 0 ? targetServes / baseServes : 1;
+              const idx = updated.findIndex(
+                p =>
+                  p.name.toLowerCase() === ing.name.toLowerCase() &&
+                  p.unit === unit,
+              );
               if (idx >= 0) {
-                updated[idx].quantity = Math.max(0, +(updated[idx].quantity - qty * factor).toFixed(3));
+                updated[idx].quantity = Math.max(
+                  0,
+                  +(updated[idx].quantity - qty * factor).toFixed(3),
+                );
                 updated[idx].updatedAt = new Date().toISOString();
               }
             }
@@ -577,21 +729,6 @@ export default function WeeklyTimelineScreen() {
     return prior % 2 === 0 ? startPerson : other(startPerson);
   };
 
-  const getIngredientCount = () => {
-    const allIngredients = new Set<string>();
-    mealPlan.forEach(meal => {
-      const recipe = recipes.find(r => r.id === meal.recipeId);
-      if (recipe) {
-        recipe.ingredients.forEach(ingredient => {
-          if (ingredient.name?.trim()) {
-            allIngredients.add(ingredient.name.toLowerCase().trim());
-          }
-        });
-      }
-    });
-    return allIngredients.size;
-  };
-
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newWeek = new Date(currentWeek);
     newWeek.setDate(currentWeek.getDate() + (direction === 'next' ? 7 : -7));
@@ -603,11 +740,18 @@ export default function WeeklyTimelineScreen() {
   };
 
   const generateRandomMealPlan = async (tag?: 'Keto' | 'Mediterranean') => {
-    const source = tag ? recipes.filter(r => r.tags && r.tags.includes(tag)) : recipes;
+    const source = tag
+      ? recipes.filter(r => r.tags && r.tags.includes(tag))
+      : recipes;
     if (source.length === 0) {
-      const msg = tag ? `No ${tag} recipes available. Add some or change the filter.` : 'Please add some recipes first before generating a meal plan.';
+      const msg = tag
+        ? `No ${tag} recipes available. Add some or change the filter.`
+        : 'Please add some recipes first before generating a meal plan.';
       if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+        if (
+          typeof window !== 'undefined' &&
+          typeof window.alert === 'function'
+        ) {
           window.alert(msg);
         }
       } else {
@@ -616,16 +760,19 @@ export default function WeeklyTimelineScreen() {
       return;
     }
 
-    const title = tag ? `Generate ${tag} Meal Plan` : 'Generate Random Meal Plan';
+    const title = tag
+      ? `Generate ${tag} Meal Plan`
+      : 'Generate Random Meal Plan';
     const prompt = tag
       ? `This will replace your current meal plan with random ${tag} recipes for this week. Continue?`
       : 'This will replace your current meal plan with random recipes for this week. Continue?';
 
     // Web confirm and immediate generation
     if (Platform.OS === 'web') {
-      const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
-        ? window.confirm(prompt)
-        : true;
+      const ok =
+        typeof window !== 'undefined' && typeof window.confirm === 'function'
+          ? window.confirm(prompt)
+          : true;
       if (!ok) return;
       try {
         const weekDays = getWeekDays();
@@ -640,7 +787,10 @@ export default function WeeklyTimelineScreen() {
           };
         });
         await saveMealPlan(newMealPlan);
-        Alert.alert('Success!', `Random ${tag ?? ''}${tag ? ' ' : ''}meal plan generated successfully!`.trim());
+        Alert.alert(
+          'Success!',
+          `Random ${tag ?? ''}${tag ? ' ' : ''}meal plan generated successfully!`.trim(),
+        );
       } catch (error) {
         console.error('Error generating random meal plan:', error);
         Alert.alert('Error', 'Failed to generate meal plan');
@@ -648,44 +798,44 @@ export default function WeeklyTimelineScreen() {
       return;
     }
 
-    Alert.alert(
-      title,
-      prompt,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Generate',
-          onPress: async () => {
-            try {
-              const weekDays = getWeekDays();
-              const shuffled = [...source].sort(() => 0.5 - Math.random());
-              const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
-                const recipe = shuffled[index % shuffled.length];
-                return {
-                  date: formatDate(day),
-                  recipeId: recipe.id,
-                  recipeTitle: recipe.title,
-                  serves: 4,
-                };
-              });
-              await saveMealPlan(newMealPlan);
-              Alert.alert('Success!', `Random ${tag ?? ''}${tag ? ' ' : ''}meal plan generated successfully!`.trim());
-            } catch (error) {
-              console.error('Error generating random meal plan:', error);
-              Alert.alert('Error', 'Failed to generate meal plan');
-            }
-          },
+    Alert.alert(title, prompt, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Generate',
+        onPress: async () => {
+          try {
+            const weekDays = getWeekDays();
+            const shuffled = [...source].sort(() => 0.5 - Math.random());
+            const newMealPlan: MealPlan[] = weekDays.map((day, index) => {
+              const recipe = shuffled[index % shuffled.length];
+              return {
+                date: formatDate(day),
+                recipeId: recipe.id,
+                recipeTitle: recipe.title,
+                serves: 4,
+              };
+            });
+            await saveMealPlan(newMealPlan);
+            Alert.alert(
+              'Success!',
+              `Random ${tag ?? ''}${tag ? ' ' : ''}meal plan generated successfully!`.trim(),
+            );
+          } catch (error) {
+            console.error('Error generating random meal plan:', error);
+            Alert.alert('Error', 'Failed to generate meal plan');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   // New: Clear all meals in the current plan with confirm (web/native)
   const clearMealPlan = async () => {
     if (Platform.OS === 'web') {
-      const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
-        ? window.confirm('Remove all meals from this week?')
-        : true;
+      const ok =
+        typeof window !== 'undefined' && typeof window.confirm === 'function'
+          ? window.confirm('Remove all meals from this week?')
+          : true;
       if (!ok) return;
       await saveMealPlan([]);
       return;
@@ -703,7 +853,7 @@ export default function WeeklyTimelineScreen() {
             await saveMealPlan([]);
           },
         },
-      ]
+      ],
     );
   };
 
@@ -720,7 +870,7 @@ export default function WeeklyTimelineScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, []),
   );
 
   const weekDays = getWeekDays();
@@ -752,335 +902,684 @@ export default function WeeklyTimelineScreen() {
           }
         }
       },
-    })
+    }),
   ).current;
 
   return (
     <ThemedView style={{ flex: 1 }} {...swipeResponder.panHandlers}>
       <ScrollView style={shared.screenContainer}>
-      <ThemedView style={shared.headerBar}>
-        <BackButton onPress={handleBack} />
-        <ThemedText type="title" style={shared.screenTitle}>Weekly Meal Plan</ThemedText>
-        <ThemedText style={styles.subtitle}>Plan your recipes for the week</ThemedText>
-        {/* Export button */}
-        <TouchableOpacity onPress={exportCurrentWeek} style={styles.exportBtn}>
-          <ThemedText style={styles.exportBtnText}>Export Week</ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.shoppingListButton}
-          onPress={() => router.push('/shopping-list')}
-        >
-          <ThemedText style={styles.shoppingListButtonText}>🛒 View Shopping List</ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.generateListButton}
-          onPress={openGenerateModal}
-        >
-          <ThemedText style={styles.generateListButtonText}>🔄 Generate New Shopping List</ThemedText>
-        </TouchableOpacity>
-      </ThemedView>
-
-      <ThemedView style={styles.content}>
-        {/* Week Navigation */}
-        <ThemedView style={styles.weekNavigation}>
-          <TouchableOpacity onPress={() => navigateWeek('prev')} style={styles.navButton}>
-            <ThemedText style={styles.navButtonText}>← Prev</ThemedText>
+        <ThemedView style={shared.headerBar}>
+          <BackButton onPress={handleBack} />
+          <ThemedText type="title" style={shared.screenTitle}>
+            Weekly Meal Plan
+          </ThemedText>
+          <ThemedText style={styles.subtitle}>
+            Plan your recipes for the week
+          </ThemedText>
+          {/* Export button */}
+          <TouchableOpacity
+            onPress={exportCurrentWeek}
+            style={styles.exportBtn}
+          >
+            <ThemedText style={styles.exportBtnText}>Export Week</ThemedText>
           </TouchableOpacity>
-          
-          <TouchableOpacity onPress={goToCurrentWeek} style={styles.currentWeekButton}>
-            <ThemedText style={styles.currentWeekText}>
-              {weekDays[0].toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} - {weekDays[6].toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
+          <TouchableOpacity
+            style={styles.shoppingListButton}
+            onPress={() => router.push('/shopping-list')}
+          >
+            <ThemedText style={styles.shoppingListButtonText}>
+              🛒 View Shopping List
             </ThemedText>
           </TouchableOpacity>
-          
-          <TouchableOpacity onPress={() => navigateWeek('next')} style={styles.navButton}>
-            <ThemedText style={styles.navButtonText}>Next →</ThemedText>
-          </TouchableOpacity>
-        </ThemedView>
-
-        {/* New: Cooking rota controls */}
-        <ThemedView style={styles.rotaBar}>
-          <TouchableOpacity style={styles.rotaStartButton} onPress={toggleWeekStart}>
-            <ThemedText style={styles.rotaStartText}>Rota starts: {weekStartPerson}</ThemedText>
-          </TouchableOpacity>
-          <ThemedText style={styles.rotaHint}>Paused days are skipped</ThemedText>
-        </ThemedView>
-
-        {/* Random Meal Plan Generator */}
-        {recipes.length > 0 && (
-          <ThemedView style={styles.randomPlanContainer}>
-            <ThemedView style={styles.randomPlanRow}>
-              <TouchableOpacity 
-                style={styles.randomPlanButton}
-                onPress={() => generateRandomMealPlan()}
-              >
-                <ThemedText style={styles.randomPlanButtonText}>🎲 Generate Random Week</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.randomPlanButton, styles.ketoPlanButton]}
-                onPress={() => generateRandomMealPlan('Keto')}
-              >
-                <ThemedText style={styles.randomPlanButtonText}>🥑 Generate Keto Week</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.clearPlanButton}
-                onPress={clearMealPlan}
-              >
-                <ThemedText style={styles.clearPlanButtonText}>🗑️ Remove All</ThemedText>
-              </TouchableOpacity>
-            </ThemedView>
-          </ThemedView>
-        )}
-
-  {/* Summary removed per request */}
-
-        {/* Week Days */}
-        <ThemedView style={styles.weekContainer}>
-          {weekDays.map((day) => {
-            const dateString = formatDate(day);
-            const assignedRecipe = getRecipeForDate(dateString);
-            const isToday = formatDate(new Date()) === dateString;
-            const paused = isPaused(dateString);
-            const cook = getCookForDate(day);
-            const cooked = cookedMap[dateString];
-
-            return (
-              <ThemedView key={dateString} style={[styles.dayCard, isToday && styles.todayCard, paused && styles.pausedCard]}>
-                <ThemedView style={styles.dayHeader}>
-                  <ThemedView style={styles.dayHeaderLeft}>
-                    <ThemedText style={[styles.dayName, isToday && styles.todayText]}>
-                      {getDayName(day)}
-                    </ThemedText>
-                    <ThemedText style={[styles.dayDate, isToday && styles.todayText]}>
-                      {formatDisplayDate(day)}
-                    </ThemedText>
-                  </ThemedView>
-
-                  <TouchableOpacity onPress={() => togglePause(dateString)} style={[styles.pauseButton, paused && styles.pauseButtonActive]}>
-                    <ThemedText style={styles.pauseButtonText}>{paused ? '▶ Resume' : '⏸ Pause'}</ThemedText>
-                  </TouchableOpacity>
-                </ThemedView>
-
-                {/* Per-day random assignment buttons */}
-                {!paused && (
-                  <ThemedView style={styles.randomRow}>
-                    <TouchableOpacity style={styles.randomChip} onPress={() => assignRandomForDate(dateString)}>
-                      <ThemedText style={styles.randomChipText}>🎲 Any</ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.randomChip, styles.randomChipKeto]} onPress={() => assignRandomForDate(dateString, 'Keto')}>
-                      <ThemedText style={[styles.randomChipText, styles.randomChipTextKeto]}>🥑 Keto</ThemedText>
-                    </TouchableOpacity>
-                  </ThemedView>
-                )}
-
-                <TouchableOpacity 
-                  style={[
-                    styles.recipeSlot,
-                    assignedRecipe && styles.recipeSlotFilled,
-                    paused && styles.recipeSlotPaused
-                  ]}
-                  onPress={() => {
-                    if (assignedRecipe) {
-                      removeRecipeFromDay(dateString);
-                    } else {
-                      setSelectedDate(dateString);
-                      setShowRecipeModal(true);
-                    }
-                  }}
-                >
-                  {paused ? (
-                    <ThemedView style={styles.assignedRecipe}>
-                      <ThemedText style={styles.pausedText}>⏸ Paused (no one cooks)</ThemedText>
-                      {assignedRecipe && (
-                        <ThemedText style={styles.recipeTitle} numberOfLines={2}>
-                          {assignedRecipe.recipeTitle}
-                        </ThemedText>
-                      )}
-                    </ThemedView>
-                  ) : assignedRecipe ? (
-                    <ThemedView style={styles.assignedRecipe}>
-                      <ThemedText style={styles.recipeTitle} numberOfLines={2}>
-                        {assignedRecipe.recipeTitle}
-                      </ThemedText>
-                      {cook && (
-                        <ThemedText style={styles.cookText}>👩‍🍳 Cook: {cook}</ThemedText>
-                      )}
-                      {/* In-card serves toggle */}
-                      <ThemedView style={[styles.servesButtons, { marginBottom: 6 }]}>
-                        <ThemedText style={[styles.cookText, { marginRight: 8 }]}>Serves:</ThemedText>
-                        <TouchableOpacity 
-                          style={[styles.servesBtn, (assignedRecipe?.serves ?? 4) === 2 && styles.servesBtnActive]}
-                          onPress={() => updateMealServes(dateString, 2)}
-                        >
-                          <ThemedText style={[styles.servesBtnText, (assignedRecipe?.serves ?? 4) === 2 && styles.servesBtnTextActive]}>2</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.servesBtn, (assignedRecipe?.serves ?? 4) === 4 && styles.servesBtnActive]}
-                          onPress={() => updateMealServes(dateString, 4)}
-                        >
-                          <ThemedText style={[styles.servesBtnText, (assignedRecipe?.serves ?? 4) === 4 && styles.servesBtnTextActive]}>4</ThemedText>
-                        </TouchableOpacity>
-                      </ThemedView>
-                      <TouchableOpacity onPress={() => markCooked(dateString)} style={[styles.cookBtn, cooked && styles.cookBtnDone]}>
-                        <ThemedText style={styles.cookBtnText}>{cooked ? 'Cooked ✓' : 'Mark Cooked'}</ThemedText>
-                      </TouchableOpacity>
-                      <ThemedText style={styles.tapToRemove}>Tap background to remove</ThemedText>
-                    </ThemedView>
-                  ) : (
-                    <ThemedView style={styles.emptySlot}>
-                      <ThemedText style={styles.addRecipeText}>+ Add Recipe</ThemedText>
-                    </ThemedView>
-                  )}
-                </TouchableOpacity>
-              </ThemedView>
-            );
-          })}
-        </ThemedView>
-
-        {recipes.length === 0 && (
-          <ThemedView style={styles.noRecipesContainer}>
-            <ThemedText style={styles.noRecipesText}>
-              No recipes available. Create some recipes first to add them to your meal plan!
+          <TouchableOpacity
+            style={styles.generateListButton}
+            onPress={openGenerateModal}
+          >
+            <ThemedText style={styles.generateListButtonText}>
+              🔄 Generate New Shopping List
             </ThemedText>
-            <TouchableOpacity 
-              style={styles.createRecipeButton}
-              onPress={() => router.push('/add-recipe')}
+          </TouchableOpacity>
+        </ThemedView>
+
+        <ThemedView style={styles.content}>
+          {/* Week Navigation */}
+          <ThemedView style={styles.weekNavigation}>
+            <TouchableOpacity
+              onPress={() => navigateWeek('prev')}
+              style={styles.navButton}
             >
-              <ThemedText style={styles.createRecipeButtonText}>Create First Recipe</ThemedText>
+              <ThemedText style={styles.navButtonText}>← Prev</ThemedText>
             </TouchableOpacity>
-          </ThemedView>
-        )}
-      </ThemedView>
 
-      {/* Recipe Selection Modal */}
-      <Modal
-        visible={showRecipeModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowRecipeModal(false)}
-      >
-        <ThemedView style={styles.modalContainer}>
-          <ThemedView style={styles.modalHeader}>
-            <ThemedText type="subtitle" style={styles.modalTitle}>
-              Choose a Recipe
-            </ThemedText>
-            <TouchableOpacity 
-              onPress={() => setShowRecipeModal(false)}
-              style={styles.closeButton}
+            <TouchableOpacity
+              onPress={goToCurrentWeek}
+              style={styles.currentWeekButton}
             >
-              <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+              <ThemedText style={styles.currentWeekText}>
+                {weekDays[0].toLocaleDateString('en-GB', {
+                  month: 'short',
+                  day: 'numeric',
+                })}{' '}
+                -{' '}
+                {weekDays[6].toLocaleDateString('en-GB', {
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigateWeek('next')}
+              style={styles.navButton}
+            >
+              <ThemedText style={styles.navButtonText}>Next →</ThemedText>
             </TouchableOpacity>
           </ThemedView>
 
-          {/* Serves selector */}
-          <ThemedView style={styles.servesSelector}>
-            <ThemedText style={styles.servesLabel}>Serves:</ThemedText>
-            <ThemedView style={styles.servesButtons}>
-              <TouchableOpacity 
-                style={[styles.servesBtn, selectedServes === 2 && styles.servesBtnActive]}
-                onPress={() => setSelectedServes(2)}
-              >
-                <ThemedText style={[styles.servesBtnText, selectedServes === 2 && styles.servesBtnTextActive]}>2</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.servesBtn, selectedServes === 4 && styles.servesBtnActive]}
-                onPress={() => setSelectedServes(4)}
-              >
-                <ThemedText style={[styles.servesBtnText, selectedServes === 4 && styles.servesBtnTextActive]}>4</ThemedText>
-              </TouchableOpacity>
-            </ThemedView>
+          {/* New: Cooking rota controls */}
+          <ThemedView style={styles.rotaBar}>
+            <TouchableOpacity
+              style={styles.rotaStartButton}
+              onPress={toggleWeekStart}
+            >
+              <ThemedText style={styles.rotaStartText}>
+                Rota starts: {weekStartPerson}
+              </ThemedText>
+            </TouchableOpacity>
+            <ThemedText style={styles.rotaHint}>
+              Paused days are skipped
+            </ThemedText>
           </ThemedView>
 
-          {/* Tag filter pills */}
-          <ThemedView style={[styles.filterBar, { paddingHorizontal: 20, marginBottom: 6 }]}>
-            {['All', 'Keto', 'Mediterranean'].map((tag) => {
-              const active = activeTagFilter === tag;
-              return (
+          {/* Random Meal Plan Generator */}
+          {recipes.length > 0 && (
+            <ThemedView style={styles.randomPlanContainer}>
+              <ThemedView style={styles.randomPlanRow}>
                 <TouchableOpacity
-                  key={tag}
-                  onPress={() => setActiveTagFilter(tag)}
-                  style={[styles.filterPill, active && styles.filterPillActive]}
-                  activeOpacity={0.7}
+                  style={styles.randomPlanButton}
+                  onPress={() => generateRandomMealPlan()}
                 >
-                  <ThemedText style={[styles.filterPillText, active && styles.filterPillTextActive]}>
-                    {tag}
+                  <ThemedText style={styles.randomPlanButtonText}>
+                    🎲 Generate Random Week
                   </ThemedText>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.randomPlanButton, styles.ketoPlanButton]}
+                  onPress={() => generateRandomMealPlan('Keto')}
+                >
+                  <ThemedText style={styles.randomPlanButtonText}>
+                    🥑 Generate Keto Week
+                  </ThemedText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.clearPlanButton}
+                  onPress={clearMealPlan}
+                >
+                  <ThemedText style={styles.clearPlanButtonText}>
+                    🗑️ Remove All
+                  </ThemedText>
+                </TouchableOpacity>
+              </ThemedView>
+            </ThemedView>
+          )}
+
+          {/* Summary removed per request */}
+
+          {/* Week Days */}
+          <ThemedView style={styles.weekContainer}>
+            {weekDays.map(day => {
+              const dateString = formatDate(day);
+              const assignedRecipe = getRecipeForDate(dateString);
+              const isToday = formatDate(new Date()) === dateString;
+              const paused = isPaused(dateString);
+              const cook = getCookForDate(day);
+              const cooked = cookedMap[dateString];
+
+              return (
+                <ThemedView
+                  key={dateString}
+                  style={[
+                    styles.dayCard,
+                    isToday && styles.todayCard,
+                    paused && styles.pausedCard,
+                  ]}
+                >
+                  <ThemedView style={styles.dayHeader}>
+                    <ThemedView style={styles.dayHeaderLeft}>
+                      <ThemedText
+                        style={[styles.dayName, isToday && styles.todayText]}
+                      >
+                        {getDayName(day)}
+                      </ThemedText>
+                      <ThemedText
+                        style={[styles.dayDate, isToday && styles.todayText]}
+                      >
+                        {formatDisplayDate(day)}
+                      </ThemedText>
+                    </ThemedView>
+
+                    <TouchableOpacity
+                      onPress={() => togglePause(dateString)}
+                      style={[
+                        styles.pauseButton,
+                        paused && styles.pauseButtonActive,
+                      ]}
+                    >
+                      <ThemedText style={styles.pauseButtonText}>
+                        {paused ? '▶ Resume' : '⏸ Pause'}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </ThemedView>
+
+                  {/* Per-day random assignment buttons */}
+                  {!paused && (
+                    <ThemedView style={styles.randomRow}>
+                      <TouchableOpacity
+                        style={styles.randomChip}
+                        onPress={() => assignRandomForDate(dateString)}
+                      >
+                        <ThemedText style={styles.randomChipText}>
+                          🎲 Any
+                        </ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.randomChip, styles.randomChipKeto]}
+                        onPress={() => assignRandomForDate(dateString, 'Keto')}
+                      >
+                        <ThemedText
+                          style={[
+                            styles.randomChipText,
+                            styles.randomChipTextKeto,
+                          ]}
+                        >
+                          🥑 Keto
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </ThemedView>
+                  )}
+
+                  <TouchableOpacity
+                    style={[
+                      styles.recipeSlot,
+                      assignedRecipe && styles.recipeSlotFilled,
+                      paused && styles.recipeSlotPaused,
+                    ]}
+                    onPress={() => {
+                      if (assignedRecipe) {
+                        removeRecipeFromDay(dateString);
+                      } else {
+                        setSelectedDate(dateString);
+                        setShowRecipeModal(true);
+                      }
+                    }}
+                  >
+                    {paused ? (
+                      <ThemedView style={styles.assignedRecipe}>
+                        <ThemedText style={styles.pausedText}>
+                          ⏸ Paused (no one cooks)
+                        </ThemedText>
+                        {assignedRecipe && (
+                          <ThemedText
+                            style={styles.recipeTitle}
+                            numberOfLines={2}
+                          >
+                            {assignedRecipe.recipeTitle}
+                          </ThemedText>
+                        )}
+                      </ThemedView>
+                    ) : assignedRecipe ? (
+                      <ThemedView style={styles.assignedRecipe}>
+                        <ThemedText
+                          style={styles.recipeTitle}
+                          numberOfLines={2}
+                        >
+                          {assignedRecipe.recipeTitle}
+                        </ThemedText>
+                        {cook && (
+                          <ThemedText style={styles.cookText}>
+                            👩‍🍳 Cook: {cook}
+                          </ThemedText>
+                        )}
+
+                        {/* Ingredients toggle + expanded list */}
+                        {(() => {
+                          const recipe = recipes.find(
+                            r => r.id === assignedRecipe.recipeId,
+                          );
+                          const ingCount = recipe?.ingredients?.length ?? 0;
+
+                          if (!recipe) return null;
+
+                          return (
+                            <ThemedView style={styles.ingredientsBlock}>
+                              <TouchableOpacity
+                                onPress={e => {
+                                  // Prevent expanding ingredients from also triggering the parent "remove" press.
+                                  // (RN web uses stopPropagation; native ignores it but still fine.)
+                                  // @ts-ignore
+                                  if (e?.stopPropagation) e.stopPropagation();
+                                  openIngredientsModal(dateString);
+                                }}
+                                activeOpacity={0.7}
+                                accessibilityRole="button"
+                                accessibilityLabel={'View ingredients'}
+                                style={styles.ingredientsToggle}
+                              >
+                                <ThemedText
+                                  style={styles.ingredientsToggleText}
+                                >
+                                  ▸ Ingredients
+                                  {ingCount ? ` (${ingCount})` : ''}
+                                </ThemedText>
+                              </TouchableOpacity>
+                            </ThemedView>
+                          );
+                        })()}
+
+                        {/* In-card serves toggle */}
+                        <ThemedView
+                          style={[styles.servesButtons, { marginBottom: 6 }]}
+                        >
+                          <ThemedText
+                            style={[styles.cookText, { marginRight: 8 }]}
+                          >
+                            Serves:
+                          </ThemedText>
+                          <TouchableOpacity
+                            style={[
+                              styles.servesBtn,
+                              (assignedRecipe?.serves ?? 4) === 2 &&
+                                styles.servesBtnActive,
+                            ]}
+                            onPress={e => {
+                              // @ts-ignore
+                              if (e?.stopPropagation) e.stopPropagation();
+                              updateMealServes(dateString, 2);
+                            }}
+                          >
+                            <ThemedText
+                              style={[
+                                styles.servesBtnText,
+                                (assignedRecipe?.serves ?? 4) === 2 &&
+                                  styles.servesBtnTextActive,
+                              ]}
+                            >
+                              2
+                            </ThemedText>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.servesBtn,
+                              (assignedRecipe?.serves ?? 4) === 4 &&
+                                styles.servesBtnActive,
+                            ]}
+                            onPress={e => {
+                              // @ts-ignore
+                              if (e?.stopPropagation) e.stopPropagation();
+                              updateMealServes(dateString, 4);
+                            }}
+                          >
+                            <ThemedText
+                              style={[
+                                styles.servesBtnText,
+                                (assignedRecipe?.serves ?? 4) === 4 &&
+                                  styles.servesBtnTextActive,
+                              ]}
+                            >
+                              4
+                            </ThemedText>
+                          </TouchableOpacity>
+                        </ThemedView>
+                        <TouchableOpacity
+                          onPress={e => {
+                            // @ts-ignore
+                            if (e?.stopPropagation) e.stopPropagation();
+                            markCooked(dateString);
+                          }}
+                          style={[styles.cookBtn, cooked && styles.cookBtnDone]}
+                        >
+                          <ThemedText style={styles.cookBtnText}>
+                            {cooked ? 'Cooked ✓' : 'Mark Cooked'}
+                          </ThemedText>
+                        </TouchableOpacity>
+                        <ThemedText style={styles.tapToRemove}>
+                          Tap background to remove
+                        </ThemedText>
+                      </ThemedView>
+                    ) : (
+                      <ThemedView style={styles.emptySlot}>
+                        <ThemedText style={styles.addRecipeText}>
+                          + Add Recipe
+                        </ThemedText>
+                      </ThemedView>
+                    )}
+                  </TouchableOpacity>
+                </ThemedView>
               );
             })}
           </ThemedView>
-          {activeTagFilter !== 'All' && (
-            <ThemedText style={[styles.filterInfo, { paddingHorizontal: 20 }]}>
-              Filtering by {activeTagFilter}
-            </ThemedText>
-          )}
 
-          <ScrollView style={styles.recipeList}>
-            {(activeTagFilter === 'All' ? recipes : recipes.filter(r => r.tags && r.tags.includes(activeTagFilter))).map((recipe) => (
+          {recipes.length === 0 && (
+            <ThemedView style={styles.noRecipesContainer}>
+              <ThemedText style={styles.noRecipesText}>
+                No recipes available. Create some recipes first to add them to
+                your meal plan!
+              </ThemedText>
               <TouchableOpacity
-                key={recipe.id}
-                style={styles.recipeOption}
-                onPress={() => assignRecipeToDay(recipe.id, recipe.title)}
+                style={styles.createRecipeButton}
+                onPress={() => router.push('/add-recipe')}
               >
-                <ThemedText style={styles.recipeOptionTitle}>{recipe.title}</ThemedText>
-                <ThemedText style={styles.recipeOptionDetails}>
-                  {recipe.ingredients.length} ingredients{typeof recipe.serves === 'number' ? ` • base serves ${recipe.serves}` : ''}
+                <ThemedText style={styles.createRecipeButtonText}>
+                  Create First Recipe
                 </ThemedText>
               </TouchableOpacity>
-            ))}
-            {((activeTagFilter !== 'All' ? recipes.filter(r => r.tags && r.tags.includes(activeTagFilter)) : recipes).length === 0) && (
-              <ThemedView style={{ padding: 20 }}>
-                <ThemedText style={{ color: '#666' }}>No recipes match this filter.</ThemedText>
-              </ThemedView>
-            )}
-          </ScrollView>
+            </ThemedView>
+          )}
         </ThemedView>
-      </Modal>
-      {/* Generate Shopping List Start Date Modal */}
-      <Modal
-        visible={showGenerateModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowGenerateModal(false)}
-      >
-        <ThemedView style={styles.genModalOverlay}>
-          <ThemedView style={styles.genModalCard}>
-            <ThemedText type="subtitle" style={styles.genModalTitle}>Generate New Shopping List</ThemedText>
-            <ThemedText style={styles.genModalSubtitle}>Select the date from which to include meals (within this week).</ThemedText>
-            <ScrollView style={{ maxHeight: 260, width: '100%' }}>
-              {getWeekDays().map(d => {
-                const dateStr = formatDate(d);
-                const selected = dateStr === generateFromDate;
+
+        {/* Recipe Selection Modal */}
+        <Modal
+          visible={showRecipeModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowRecipeModal(false)}
+        >
+          <ThemedView style={styles.modalContainer}>
+            <ThemedView style={styles.modalHeader}>
+              <ThemedText type="subtitle" style={styles.modalTitle}>
+                Choose a Recipe
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => setShowRecipeModal(false)}
+                style={styles.closeButton}
+              >
+                <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+
+            {/* Serves selector */}
+            <ThemedView style={styles.servesSelector}>
+              <ThemedText style={styles.servesLabel}>Serves:</ThemedText>
+              <ThemedView style={styles.servesButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.servesBtn,
+                    selectedServes === 2 && styles.servesBtnActive,
+                  ]}
+                  onPress={() => setSelectedServes(2)}
+                >
+                  <ThemedText
+                    style={[
+                      styles.servesBtnText,
+                      selectedServes === 2 && styles.servesBtnTextActive,
+                    ]}
+                  >
+                    2
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.servesBtn,
+                    selectedServes === 4 && styles.servesBtnActive,
+                  ]}
+                  onPress={() => setSelectedServes(4)}
+                >
+                  <ThemedText
+                    style={[
+                      styles.servesBtnText,
+                      selectedServes === 4 && styles.servesBtnTextActive,
+                    ]}
+                  >
+                    4
+                  </ThemedText>
+                </TouchableOpacity>
+              </ThemedView>
+            </ThemedView>
+
+            {/* Tag filter pills */}
+            <ThemedView
+              style={[
+                styles.filterBar,
+                { paddingHorizontal: 20, marginBottom: 6 },
+              ]}
+            >
+              {['All', 'Keto', 'Mediterranean'].map(tag => {
+                const active = activeTagFilter === tag;
                 return (
                   <TouchableOpacity
-                    key={dateStr}
-                    style={[styles.genDateRow, selected && styles.genDateRowActive]}
-                    onPress={() => setGenerateFromDate(dateStr)}
+                    key={tag}
+                    onPress={() => setActiveTagFilter(tag)}
+                    style={[
+                      styles.filterPill,
+                      active && styles.filterPillActive,
+                    ]}
+                    activeOpacity={0.7}
                   >
-                    <ThemedText style={[styles.genDateText, selected && styles.genDateTextActive]}>
-                      {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    <ThemedText
+                      style={[
+                        styles.filterPillText,
+                        active && styles.filterPillTextActive,
+                      ]}
+                    >
+                      {tag}
                     </ThemedText>
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
-            <ThemedView style={styles.genActionsRow}>
-              <TouchableOpacity style={styles.genCancelBtn} onPress={() => setShowGenerateModal(false)}>
-                <ThemedText style={styles.genCancelText}>Cancel</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.genConfirmBtn, !generateFromDate && { opacity: 0.5 }]}
-                disabled={!generateFromDate}
-                onPress={regenerateShoppingListForWeek}
+            </ThemedView>
+            {activeTagFilter !== 'All' && (
+              <ThemedText
+                style={[styles.filterInfo, { paddingHorizontal: 20 }]}
               >
-                <ThemedText style={styles.genConfirmText}>Generate</ThemedText>
-              </TouchableOpacity>
+                Filtering by {activeTagFilter}
+              </ThemedText>
+            )}
+
+            <ScrollView style={styles.recipeList}>
+              {(activeTagFilter === 'All'
+                ? recipes
+                : recipes.filter(
+                    r => r.tags && r.tags.includes(activeTagFilter),
+                  )
+              ).map(recipe => (
+                <TouchableOpacity
+                  key={recipe.id}
+                  style={styles.recipeOption}
+                  onPress={() => assignRecipeToDay(recipe.id, recipe.title)}
+                >
+                  <ThemedText style={styles.recipeOptionTitle}>
+                    {recipe.title}
+                  </ThemedText>
+                  <ThemedText style={styles.recipeOptionDetails}>
+                    {recipe.ingredients.length} ingredients
+                    {typeof recipe.serves === 'number'
+                      ? ` • base serves ${recipe.serves}`
+                      : ''}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+              {(activeTagFilter !== 'All'
+                ? recipes.filter(
+                    r => r.tags && r.tags.includes(activeTagFilter),
+                  )
+                : recipes
+              ).length === 0 && (
+                <ThemedView style={{ padding: 20 }}>
+                  <ThemedText style={{ color: '#666' }}>
+                    No recipes match this filter.
+                  </ThemedText>
+                </ThemedView>
+              )}
+            </ScrollView>
+          </ThemedView>
+        </Modal>
+        {/* Generate Shopping List Start Date Modal */}
+        <Modal
+          visible={showGenerateModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowGenerateModal(false)}
+        >
+          <ThemedView style={styles.genModalOverlay}>
+            <ThemedView style={styles.genModalCard}>
+              <ThemedText type="subtitle" style={styles.genModalTitle}>
+                Generate New Shopping List
+              </ThemedText>
+              <ThemedText style={styles.genModalSubtitle}>
+                Select the date from which to include meals (within this week).
+              </ThemedText>
+              <ScrollView style={{ maxHeight: 260, width: '100%' }}>
+                {getWeekDays().map(d => {
+                  const dateStr = formatDate(d);
+                  const selected = dateStr === generateFromDate;
+                  return (
+                    <TouchableOpacity
+                      key={dateStr}
+                      style={[
+                        styles.genDateRow,
+                        selected && styles.genDateRowActive,
+                      ]}
+                      onPress={() => setGenerateFromDate(dateStr)}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.genDateText,
+                          selected && styles.genDateTextActive,
+                        ]}
+                      >
+                        {d.toLocaleDateString('en-GB', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <ThemedView style={styles.genActionsRow}>
+                <TouchableOpacity
+                  style={styles.genCancelBtn}
+                  onPress={() => setShowGenerateModal(false)}
+                >
+                  <ThemedText style={styles.genCancelText}>Cancel</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.genConfirmBtn,
+                    !generateFromDate && { opacity: 0.5 },
+                  ]}
+                  disabled={!generateFromDate}
+                  onPress={regenerateShoppingListForWeek}
+                >
+                  <ThemedText style={styles.genConfirmText}>
+                    Generate
+                  </ThemedText>
+                </TouchableOpacity>
+              </ThemedView>
             </ThemedView>
           </ThemedView>
-        </ThemedView>
-      </Modal>
+        </Modal>
+
+        {/* Ingredients Modal */}
+        <Modal
+          visible={showIngredientsModal}
+          animationType="slide"
+          transparent
+          onRequestClose={closeIngredientsModal}
+        >
+          <ThemedView style={styles.ingredientsModalOverlay}>
+            <TouchableOpacity
+              style={styles.ingredientsModalBackdrop}
+              activeOpacity={1}
+              onPress={closeIngredientsModal}
+            />
+
+            <ThemedView style={styles.ingredientsModalSheet}>
+              {(() => {
+                if (!ingredientsModalDate) return null;
+                const meal = mealPlan.find(
+                  m => m.date === ingredientsModalDate,
+                );
+                if (!meal) return null;
+                const recipe = recipes.find(r => r.id === meal.recipeId);
+                if (!recipe) return null;
+                const baseServes =
+                  typeof recipe.serves === 'number' ? recipe.serves : 4;
+                const targetServes =
+                  typeof meal.serves === 'number' ? meal.serves : 4;
+                const factor = baseServes > 0 ? targetServes / baseServes : 1;
+
+                return (
+                  <>
+                    <ThemedView style={styles.ingredientsModalHeader}>
+                      <ThemedView style={{ flex: 1 }}>
+                        <ThemedText
+                          type="subtitle"
+                          style={styles.ingredientsModalTitle}
+                          numberOfLines={2}
+                        >
+                          {recipe.title}
+                        </ThemedText>
+                        <ThemedText style={styles.ingredientsModalSubtitle}>
+                          Ingredients • serves {targetServes}
+                          {baseServes !== targetServes
+                            ? ` (scaled from ${baseServes})`
+                            : ''}
+                        </ThemedText>
+                      </ThemedView>
+
+                      <TouchableOpacity
+                        onPress={closeIngredientsModal}
+                        accessibilityRole="button"
+                        accessibilityLabel="Close ingredients"
+                        style={styles.ingredientsModalCloseBtn}
+                      >
+                        <ThemedText style={styles.ingredientsModalCloseText}>
+                          ✕
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </ThemedView>
+
+                    <ScrollView
+                      style={styles.ingredientsModalScroll}
+                      contentContainerStyle={
+                        styles.ingredientsModalScrollContent
+                      }
+                    >
+                      {recipe.ingredients.length === 0 ? (
+                        <ThemedText style={styles.ingredientsEmptyText}>
+                          No ingredients saved for this recipe.
+                        </ThemedText>
+                      ) : (
+                        recipe.ingredients.map(ing => (
+                          <ThemedView key={ing.id} style={styles.ingredientRow}>
+                            <ThemedText
+                              style={styles.ingredientName}
+                              numberOfLines={1}
+                            >
+                              • {ing.name}
+                            </ThemedText>
+                            {!!(ing.amount || '').trim() && (
+                              <ThemedText
+                                style={styles.ingredientAmount}
+                                numberOfLines={1}
+                              >
+                                {getScaledAmount(ing.amount, factor)}
+                              </ThemedText>
+                            )}
+                          </ThemedView>
+                        ))
+                      )}
+                    </ScrollView>
+                  </>
+                );
+              })()}
+            </ThemedView>
+          </ThemedView>
+        </Modal>
       </ScrollView>
     </ThemedView>
   );
@@ -1092,7 +1591,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     opacity: 0.9,
   },
-  exportBtn: { marginLeft: 'auto', backgroundColor: '#2563eb', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
+  exportBtn: {
+    marginLeft: 'auto',
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
   exportBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   shoppingListButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -1136,7 +1641,12 @@ const styles = StyleSheet.create({
     maxWidth: 420,
   },
   genModalTitle: { color: '#222', marginBottom: 4 },
-  genModalSubtitle: { color: '#555', fontSize: 13, lineHeight: 18, marginBottom: 12 },
+  genModalSubtitle: {
+    color: '#555',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
   genDateRow: {
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -1147,10 +1657,20 @@ const styles = StyleSheet.create({
   genDateRowActive: { backgroundColor: '#2563eb' },
   genDateText: { color: '#374151', fontSize: 15 },
   genDateTextActive: { color: '#fff', fontWeight: '600' },
-  genActionsRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 6 },
+  genActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 6,
+  },
   genCancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
   genCancelText: { color: '#555', fontSize: 14 },
-  genConfirmBtn: { backgroundColor: '#FF6B6B', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
+  genConfirmBtn: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
   genConfirmText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   // summary card styles removed
   randomPlanContainer: {
@@ -1159,11 +1679,11 @@ const styles = StyleSheet.create({
   },
   randomPlanRow: {
     flexDirection: 'row',
-  gap: 10,
-  flexWrap: 'wrap',
-  justifyContent: 'center',
-  alignItems: 'center',
-  width: '100%',
+    gap: 10,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   randomPlanButton: {
     backgroundColor: '#9C27B0',
@@ -1175,26 +1695,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-  // Responsive: let buttons share space and wrap to new lines
-  flexBasis: '48%',
-  flexGrow: 1,
-  flexShrink: 1,
+    // Responsive: let buttons share space and wrap to new lines
+    flexBasis: '48%',
+    flexGrow: 1,
+    flexShrink: 1,
   },
   randomPlanButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
-  flexShrink: 1,
+    flexShrink: 1,
   },
   clearPlanButton: {
     backgroundColor: '#ff4444',
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderRadius: 25,
-  flexBasis: '48%',
-  flexGrow: 1,
-  flexShrink: 1,
+    flexBasis: '48%',
+    flexGrow: 1,
+    flexShrink: 1,
   },
   ketoPlanButton: {
     backgroundColor: '#2e7d32',
@@ -1209,11 +1729,11 @@ const styles = StyleSheet.create({
   },
   weekNavigation: {
     flexDirection: 'row',
-  justifyContent: 'space-between',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
     paddingHorizontal: 10,
-  flexWrap: 'wrap',
+    flexWrap: 'wrap',
   },
   navButton: {
     padding: 10,
@@ -1278,11 +1798,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
-  flexWrap: 'wrap',
+    flexWrap: 'wrap',
   },
   dayHeaderLeft: {
-  gap: 2,
-  flexShrink: 1,
+    gap: 2,
+    flexShrink: 1,
   },
   dayName: {
     fontSize: 16,
@@ -1344,6 +1864,106 @@ const styles = StyleSheet.create({
     color: '#444',
     marginBottom: 4,
   },
+  ingredientsBlock: {
+    width: '100%',
+    marginTop: 6,
+    marginBottom: 4,
+    alignItems: 'center',
+  },
+  ingredientsToggle: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 107, 107, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.25)',
+  },
+  ingredientsToggleText: {
+    color: '#d84343',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  ingredientsModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  ingredientsModalBackdrop: {
+    flex: 1,
+  },
+  ingredientsModalSheet: {
+    width: '100%',
+    maxHeight: '78%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 14,
+    paddingHorizontal: 16,
+    paddingBottom: 18,
+  },
+  ingredientsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  ingredientsModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#333',
+  },
+  ingredientsModalSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#666',
+  },
+  ingredientsModalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.06)',
+  },
+  ingredientsModalCloseText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#333',
+  },
+  ingredientsModalScroll: {
+    marginTop: 12,
+  },
+  ingredientsModalScrollContent: {
+    paddingBottom: 24,
+    gap: 10,
+  },
+  ingredientsEmptyText: {
+    color: '#666',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  ingredientRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  ingredientName: {
+    flex: 1,
+    color: '#333',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  ingredientAmount: {
+    color: '#444',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'right',
+    maxWidth: '45%',
+  },
   pausedText: {
     fontSize: 14,
     color: '#888',
@@ -1355,7 +1975,13 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
   },
-  cookBtn: { backgroundColor: '#4CAF50', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginBottom: 4 },
+  cookBtn: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 4,
+  },
   cookBtnDone: { backgroundColor: '#2e7d32' },
   cookBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   emptySlot: {
@@ -1371,7 +1997,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 10,
-  flexWrap: 'wrap',
+    flexWrap: 'wrap',
   },
   randomChip: {
     backgroundColor: '#eee',

@@ -14,7 +14,8 @@ export default function HomeScreen() {
         <ThemedView style={styles.headerContainer}>
           <ThemedText style={styles.headerEmoji}>👨‍🍳👩‍🍳</ThemedText>
         </ThemedView>
-      }>
+      }
+    >
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={styles.mainTitle}>
           Lid and Jim&apos;s Recipe Book
@@ -23,56 +24,58 @@ export default function HomeScreen() {
           Delicious recipes, made with love ❤️
         </ThemedText>
       </ThemedView>
-      
+
       <ThemedView style={styles.welcomeContainer}>
         <ThemedText type="subtitle">Welcome to your kitchen!</ThemedText>
         <ThemedText style={styles.welcomeText}>
-          Discover amazing recipes, save your favorites, and create culinary masterpieces together.
+          Discover amazing recipes, save your favorites, and create culinary
+          masterpieces together.
         </ThemedText>
       </ThemedView>
 
       <ThemedView style={styles.quickActionsContainer}>
-        
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/browse-recipes')}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/browse-recipes')}
+        >
           <ThemedText style={styles.actionEmoji}>🔍</ThemedText>
           <ThemedView style={styles.actionTextContainer}>
             <ThemedText type="defaultSemiBold">Browse Recipes</ThemedText>
-            <ThemedText style={styles.actionDescription}>Explore our collection</ThemedText>
+            <ThemedText style={styles.actionDescription}>
+              Explore our collection
+            </ThemedText>
           </ThemedView>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/add-recipe')}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/add-recipe')}
+        >
           <ThemedText style={styles.actionEmoji}>📝</ThemedText>
           <ThemedView style={styles.actionTextContainer}>
             <ThemedText type="defaultSemiBold">Add New Recipe</ThemedText>
-            <ThemedText style={styles.actionDescription}>Share your creations</ThemedText>
+            <ThemedText style={styles.actionDescription}>
+              Share your creations
+            </ThemedText>
           </ThemedView>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/shopping-list')}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/shopping-list')}
+        >
           <ThemedText style={styles.actionEmoji}>🛒</ThemedText>
           <ThemedView style={styles.actionTextContainer}>
             <ThemedText type="defaultSemiBold">Shopping List</ThemedText>
-            <ThemedText style={styles.actionDescription}>Never forget ingredients</ThemedText>
+            <ThemedText style={styles.actionDescription}>
+              Never forget ingredients
+            </ThemedText>
           </ThemedView>
         </TouchableOpacity>
 
-        {/* New: Quick access to Your Fridge */}
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/fridge')}>
-          <ThemedText style={styles.actionEmoji}>🥬</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Your Fridge</ThemedText>
-            <ThemedText style={styles.actionDescription}>Skip what you already have</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
+        {/* Kitchen & Pantry removed */}
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/bin-reminders')}>
-          <ThemedText style={styles.actionEmoji}>🗑️</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Bin Reminders</ThemedText>
-            <ThemedText style={styles.actionDescription}>Tuesday 5pm alerts</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
+        {/* Bin Reminders removed */}
       </ThemedView>
     </ParallaxScrollView>
   );

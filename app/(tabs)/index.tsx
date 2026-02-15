@@ -9,9 +9,8 @@ export default function HomeScreen() {
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <HelloWave />
-      }>
+      headerImage={<HelloWave />}
+    >
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome to Recipe App!</ThemedText>
         <HelloWave />
@@ -19,13 +18,15 @@ export default function HomeScreen() {
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Explore Recipes</ThemedText>
         <ThemedText>
-          Browse through our collection of delicious recipes and find your next favorite meal.
+          Browse through our collection of delicious recipes and find your next
+          favorite meal.
         </ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 2: Manage Ingredients</ThemedText>
         <ThemedText>
-          Keep track of what&apos;s in your fridge and get recipe suggestions based on available ingredients.
+          Build meal plans, generate shopping lists, and keep your recipes
+          organised.
         </ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>

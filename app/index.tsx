@@ -1,8 +1,7 @@
-import { shared } from '@/styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,10 +10,9 @@ import { ThemedView } from '@/components/ThemedView';
 export default function HomeScreen() {
   const router = useRouter();
   const [recipeCount, setRecipeCount] = useState<number | null>(null);
-  const [receiptCount, setReceiptCount] = useState<number | null>(null);
   // Feature flags
-  const SHOW_CALENDAR = false; // toggle on when ready to display the calendar card again
-  const SHOW_SPORTS = false;   // feature flag for My Sports card
+  // (Personal calendar feature removed)
+  const SHOW_SPORTS = false; // feature flag for My Sports card
 
   useEffect(() => {
     const loadCounts = async () => {
@@ -22,360 +20,219 @@ export default function HomeScreen() {
         const r = await AsyncStorage.getItem('recipes');
         if (r) setRecipeCount(JSON.parse(r).length);
       } catch {}
-      try {
-        const rec = await AsyncStorage.getItem('receipts');
-        if (rec) setReceiptCount(JSON.parse(rec).length);
-      } catch {}
     };
     loadCounts();
   }, []);
 
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#FF6B6B', dark: '#8B0000' }}
-      headerImage={
-        <ThemedView style={styles.headerContainer}>
-          <ThemedText style={styles.headerEmoji}>👨‍🍳👩‍🍳</ThemedText>
-        </ThemedView>
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title" style={styles.mainTitle}>
-          Lid & Jim&apos;s Home Hub
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Meals • Groceries • Pantry • Receipts • Reminders • Commute
-        </ThemedText>
-        <View style={styles.metricsRow}>
+      headerBackgroundColor={{ light: '#F6F7F9', dark: '#0D0F12' }}
+      headerImage={<ThemedView style={styles.header} />}
+    >
+      <ThemedView style={styles.container}>
+        <ThemedView style={styles.topRow}>
+          <ThemedView style={styles.topRowText}>
+            <ThemedText type="title" style={styles.title}>
+              Home
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Recipes, meal plans, and shopping
+            </ThemedText>
+          </ThemedView>
           {recipeCount !== null && (
-            <View style={styles.metricChip}><ThemedText style={styles.metricText}>{recipeCount} recipes</ThemedText></View>
+            <ThemedView style={styles.countPill}>
+              <ThemedText style={styles.countPillText}>
+                {recipeCount} recipes
+              </ThemedText>
+            </ThemedView>
           )}
-          {receiptCount !== null && (
-            <View style={styles.metricChip}><ThemedText style={styles.metricText}>{receiptCount} receipts</ThemedText></View>
-          )}
-        </View>
-      </ThemedView>
-      
-      <ThemedView style={styles.welcomeContainer}>
-        <ThemedText type="subtitle">All your household flow in one place</ThemedText>
-        <ThemedText style={styles.welcomeText}>
-          Plan dinners, auto-build shopping lists, track pantry & fridge items, scan receipts, set bin reminders and pick the best train — together.
-        </ThemedText>
-      </ThemedView>
+        </ThemedView>
 
-      <ThemedView style={styles.quickActionsContainer}>
-  <ThemedText type="subtitle" style={styles.sectionTitle}>Quick Actions</ThemedText>
+        <ThemedView style={styles.card}>
+          <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+            Recipes
+          </ThemedText>
+          <ThemedText style={styles.cardText}>
+            Browse your recipes, add new ones, plan the week, and build a
+            shopping list.
+          </ThemedText>
 
-        {/* Combined Recipes Card */}
-        <TouchableOpacity
-          style={[styles.actionButton, styles.groupCard]}
-          onPress={() => router.push('/browse-recipes')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>🍲</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <View style={styles.titleRow}>
-              <ThemedText type="defaultSemiBold">Recipes</ThemedText>
-              {recipeCount !== null && (
-                <View style={styles.badge}><ThemedText style={styles.badgeText}>{recipeCount}</ThemedText></View>
-              )}
-            </View>
-            <ThemedText style={styles.actionDescription}>Browse or add new recipes</ThemedText>
-            <ThemedView style={styles.inlineActions}>
-              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/browse-recipes')}>
-                <ThemedText style={styles.inlinePillText}>Browse</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/add-recipe')}>
-                <ThemedText style={styles.inlinePillText}>Add</ThemedText>
-              </TouchableOpacity>
-            </ThemedView>
-          </ThemedView>
-        </TouchableOpacity>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity
+              style={[styles.action, styles.actionPrimary]}
+              onPress={() => router.push('/browse-recipes')}
+              activeOpacity={0.9}
+            >
+              <ThemedText
+                type="defaultSemiBold"
+                style={[styles.actionText, styles.actionTextOnPrimary]}
+              >
+                Browse recipes
+              </ThemedText>
+            </TouchableOpacity>
 
-        {/* Grocery Tools (Receipts, Fridge, Ingredients) */}
-        <TouchableOpacity
-          style={[styles.actionButton, styles.groupCard]}
-          onPress={() => router.push('/fridge')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>🥬</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <View style={styles.titleRow}>
-              <ThemedText type="defaultSemiBold">Kitchen & Pantry</ThemedText>
-              {receiptCount !== null && (
-                <View style={[styles.badge, styles.badgeNeutral]}><ThemedText style={styles.badgeText}>{receiptCount}</ThemedText></View>
-              )}
-            </View>
-            <ThemedText style={styles.actionDescription}>Receipts, fridge & ingredients</ThemedText>
-            <ThemedView style={styles.inlineActions}>
-              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/receipts')}>
-                <ThemedText style={styles.inlinePillText}>Receipts</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/fridge')}>
-                <ThemedText style={styles.inlinePillText}>Fridge</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inlinePill} onPress={() => router.push('/ingredient-manager')}>
-                <ThemedText style={styles.inlinePillText}>Ingredients</ThemedText>
-              </TouchableOpacity>
-            </ThemedView>
-          </ThemedView>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.action}
+              onPress={() => router.push('/add-recipe')}
+              activeOpacity={0.9}
+            >
+              <ThemedText type="defaultSemiBold" style={styles.actionText}>
+                Add recipe
+              </ThemedText>
+            </TouchableOpacity>
 
-        {/* New: Dedicated Meal Plan Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/meal-plan')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>📅</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Meal Plan</ThemedText>
-            <ThemedText style={styles.actionDescription}>Weekly rota & randomiser</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.action}
+              onPress={() => router.push('/meal-plan')}
+              activeOpacity={0.9}
+            >
+              <ThemedText type="defaultSemiBold" style={styles.actionText}>
+                Meal plan
+              </ThemedText>
+            </TouchableOpacity>
 
-        {/* New: Dedicated Shopping List Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/shopping-list')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>🛒</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Shopping List</ThemedText>
-            <ThemedText style={styles.actionDescription}>Items to buy this week</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.action}
+              onPress={() => router.push('/shopping-list')}
+              activeOpacity={0.9}
+            >
+              <ThemedText type="defaultSemiBold" style={styles.actionText}>
+                Shopping list
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </ThemedView>
 
-        {/* Separate Bin Reminders Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-            onPress={() => router.push('/bin-reminders')}
-            activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>🗑️</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Bin Reminders</ThemedText>
-            <ThemedText style={styles.actionDescription}>Tuesday 5pm alerts</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
-
-        {/* Notes Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/notes' as any)}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>🗒️</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Notes</ThemedText>
-            <ThemedText style={styles.actionDescription}>Scratchpad that autosaves</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
-
-        {/* Commute Planner Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/commute-planner')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>🚆</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Commute Planner</ThemedText>
-            <ThemedText style={styles.actionDescription}>Best train to arrive on time</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
-
-        {/* Weather Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/weather')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>🌦️</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Weather</ThemedText>
-            <ThemedText style={styles.actionDescription}>Guiseley ↔ Leeds today</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
-
-        {/* Personal Calendar Card (hidden via flag, logic kept) */}
-        {SHOW_CALENDAR && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push('/personal-calendar')}
-            activeOpacity={0.85}
-          >
-            <ThemedText style={styles.actionEmoji}>🗓️</ThemedText>
-            <ThemedView style={styles.actionTextContainer}>
-              <ThemedText type="defaultSemiBold">Personal Calendar</ThemedText>
-              <ThemedText style={styles.actionDescription}>Simple events & notes</ThemedText>
-            </ThemedView>
-          </TouchableOpacity>
-        )}
+        {/* Personal Calendar removed */}
 
         {/* My Sports Card (hidden via SHOW_SPORTS flag) */}
         {SHOW_SPORTS && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push('/my-sports')}
-            activeOpacity={0.85}
-          >
-            <ThemedText style={styles.actionEmoji}>⚽</ThemedText>
-            <ThemedView style={styles.actionTextContainer}>
-              <ThemedText type="defaultSemiBold">My Sports</ThemedText>
-              <ThemedText style={styles.actionDescription}>Teams, fixtures & results</ThemedText>
-            </ThemedView>
-          </TouchableOpacity>
+          <ThemedView style={styles.card}>
+            <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+              My Sports
+            </ThemedText>
+            <ThemedText style={styles.cardText}>
+              Teams, fixtures & results.
+            </ThemedText>
+            <TouchableOpacity
+              style={[styles.action, styles.actionPrimary]}
+              onPress={() => router.push('/my-sports')}
+              activeOpacity={0.9}
+            >
+              <ThemedText
+                type="defaultSemiBold"
+                style={[styles.actionText, styles.actionTextOnPrimary]}
+              >
+                Open
+              </ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
         )}
 
         {/* Weight Tracker Card */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/weight-tracker')}
-          activeOpacity={0.85}
-        >
-          <ThemedText style={styles.actionEmoji}>⚖️</ThemedText>
-          <ThemedView style={styles.actionTextContainer}>
-            <ThemedText type="defaultSemiBold">Weight Tracker</ThemedText>
-            <ThemedText style={styles.actionDescription}>Daily keto progress</ThemedText>
-          </ThemedView>
-        </TouchableOpacity>
+        <ThemedView style={styles.card}>
+          <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+            Weight tracker
+          </ThemedText>
+          <ThemedText style={styles.cardText}>
+            Track your progress over time.
+          </ThemedText>
+          <TouchableOpacity
+            style={[styles.action, styles.actionPrimary]}
+            onPress={() => router.push('/weight-tracker')}
+            activeOpacity={0.9}
+          >
+            <ThemedText
+              type="defaultSemiBold"
+              style={[styles.actionText, styles.actionTextOnPrimary]}
+            >
+              Open
+            </ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
       </ThemedView>
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 20,
+  header: {
+    height: 24,
   },
-  headerEmoji: {
-    fontSize: 70,
-    textAlign: 'center',
-    lineHeight: 80,
-  },
-  titleContainer: {
-    alignItems: 'center',
-    marginBottom: 25,
+  container: {
     paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 28,
+    gap: 14,
   },
-  mainTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-    color: '#FF6B6B',
-    letterSpacing: 0.5,
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  topRowText: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 18,
-    textAlign: 'center',
-    opacity: 0.85,
-    fontWeight: '500',
+    marginTop: 6,
+    opacity: 0.75,
+    fontSize: 14,
   },
-  metricsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 14,
-    justifyContent: 'center',
-  },
-  metricChip: {
-    backgroundColor: 'rgba(0,0,0,0.15)',
+  countPill: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.06)',
   },
-  metricText: {
+  countPillText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-  },
-  welcomeContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 35,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 107, 0.05)',
-    marginHorizontal: 20,
-    borderRadius: 16,
-    paddingVertical: 20,
-  },
-  welcomeText: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
-    opacity: 0.8,
-    marginTop: 8,
-  },
-  quickActionsContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    marginBottom: 20,
-    textAlign: 'center',
-    fontSize: 20,
     fontWeight: '600',
+    opacity: 0.85,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 107, 0.12)',
+  card: {
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 107, 107, 0.25)',
-    shadowColor: '#FF6B6B',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    padding: 16,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
-  actionEmoji: {
-    fontSize: 28,
-    marginRight: 18,
+  cardTitle: {
+    fontSize: 16,
   },
-  actionTextContainer: {
-    flex: 1,
-  },
-  actionDescription: {
-    fontSize: 15,
-    opacity: 0.75,
-    marginTop: 4,
+  cardText: {
+    marginTop: 6,
+    opacity: 0.8,
     lineHeight: 20,
   },
-  // New grouped CTA styles
-  groupCard: {
-    backgroundColor: 'rgba(255,107,107,0.18)',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  inlineActions: {
+  actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
+    gap: 10,
+    marginTop: 14,
   },
-  inlinePill: shared.pill,
-  inlinePillText: { fontSize: 13, fontWeight: '600' },
-  badge: {
-    ...shared.badge,
-    paddingVertical: Platform.select({ ios: 2, default: 3 }),
+  action: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.10)',
+    minWidth: '48%',
   },
-  badgeNeutral: {
-    backgroundColor: 'rgba(0,0,0,0.25)',
+  actionPrimary: {
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    borderColor: 'rgba(0,0,0,0.85)',
   },
-  badgeText: shared.badgeText,
+  actionText: {
+    textAlign: 'center',
+  },
+  actionTextOnPrimary: {
+    color: '#fff',
+  },
 });
